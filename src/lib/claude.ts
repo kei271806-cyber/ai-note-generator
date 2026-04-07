@@ -68,7 +68,7 @@ export async function generateArticle(
 
   try {
     const response = await anthropic.messages.create({
-      model: "claude-3-sonnet-20240229",        // 高品質モデルを使用
+      model: "claude-sonnet-4-5",        // 高品質モデルを使用
       max_tokens: 2000,
       messages: [
         {
