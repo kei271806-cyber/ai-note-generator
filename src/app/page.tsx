@@ -44,10 +44,13 @@ export default function HomePage() {
       if (data.success) {
         setArticles(data.articles);
         // 選択中の記事が更新されている場合、最新データに同期
-        if (selectedId) {
-          const updated = data.articles.find((a: Article) => a.id === selectedId);
-          if (!updated) setSelectedId(null);
-        }
+        setSelectedId((prev) => {
+  if (prev) {
+    const updated = data.articles.find((a: Article) => a.id === prev);
+    if (!updated) return null;
+  }
+  return prev;
+});
       } else {
         throw new Error(data.error);
       }
@@ -61,7 +64,8 @@ export default function HomePage() {
   // 初回ロード
   useEffect(() => {
     fetchArticles();
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // ── テーマ生成 ──
   const handleGenerateTheme = async () => {
