@@ -5,9 +5,8 @@
 
 import Anthropic from "@anthropic-ai/sdk";
 
-// Claude クライアントを初期化
 const anthropic = new Anthropic({
-  apiKey: process.env.ANTHROPIC_API_KEY,
+  apiKey: (process.env.ANTHROPIC_API_KEY ?? "").trim(),
 });
 
 // 記事生成の戻り値の型
