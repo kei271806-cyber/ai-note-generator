@@ -84,10 +84,12 @@ export async function generateArticle(
 
     // JSON をパース
     try {
-      // コードブロックが混入している場合は除去
+      // コードブロックや余分な文字を除去
       const cleaned = rawText
         .replace(/```json\n?/g, "")
         .replace(/```\n?/g, "")
+        .replace(/^[^{]*/s, "")  // { より前の文字を除去
+        .replace(/[^}]*$/s, "")  // 最後の } より後を除去
         .trim();
 
       const parsed: GeneratedArticle = JSON.parse(cleaned);
