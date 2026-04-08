@@ -24,8 +24,6 @@ export async function generateArticle(
   theme: string
 ): Promise<GeneratedArticle> {
 
-  console.log("API KEY:", process.env.ANTHROPIC_API_KEY); // ←ここに追加
-
   // システムプロンプト：Claudeへの役割設定
   const systemPrompt = `あなたはnote記事専門のプロライターです。
 以下のルールを必ず守って記事を生成してください。
