@@ -15,7 +15,7 @@ const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
  */
 export async function generateTheme(pastThemes: string[]): Promise<string> {
   // 使用するモデル（gemini-1.5-flash は高速・無料枠あり）
-  const model = genAI.getGenerativeModel({ model: "Gemini 3.1 Flash-Lite" });
+  const model = genAI.getGenerativeModel({ model: "gemini-3.1-flash-lite" });
 
   // 過去テーマをプロンプトに含める（最大30件）
   const recentThemes = pastThemes.slice(0, 30);
