@@ -36,10 +36,13 @@ export default function HomePage() {
   }, []);
 
   // ── 記事一覧を取得 ──
-  const fetchArticles = useCallback(async () => {
+    const fetchArticles = useCallback(async () => {
     setIsFetching(true);
     try {
-      const res = await fetch("/api/articles");
+      // キャッシュを無効化して毎回最新データを取得
+      const res = await fetch("/api/articles?t=" + Date.now(), {
+        cache: "no-store",
+      });
       const data = await res.json();
       if (data.success) {
         setArticles(data.articles);
