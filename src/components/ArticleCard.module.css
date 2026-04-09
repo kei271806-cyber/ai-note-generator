@@ -107,3 +107,24 @@
   font-weight: 700;
   letter-spacing: 0.05em;
 }
+.headerRight {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.deleteBtn {
+  background: none;
+  border: none;
+  color: var(--ink-200);
+  font-size: 16px;
+  cursor: pointer;
+  padding: 0 2px;
+  line-height: 1;
+  transition: color 0.15s;
+  flex-shrink: 0;
+}
+
+.deleteBtn:hover {
+  color: var(--red-500);
+}

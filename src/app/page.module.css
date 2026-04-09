@@ -281,3 +281,86 @@
   .placeholderFlow { flex-direction: column; }
   .flowArrow { transform: rotate(90deg); }
 }
+/* テーマ手動入力 */
+.manualThemeSection {
+  width: 100%;
+}
+
+.btnAddTheme {
+  width: 100%;
+  padding: 10px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--ink-600);
+  background: var(--paper-warm);
+  border: 1.5px dashed var(--ink-200);
+  border-radius: var(--radius);
+  cursor: pointer;
+  transition: all 0.15s;
+  text-align: center;
+}
+
+.btnAddTheme:hover:not(:disabled) {
+  border-color: var(--gold-400);
+  color: var(--gold-600);
+  background: var(--gold-dim);
+}
+
+.themeInputWrap {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.themeInput {
+  width: 100%;
+  padding: 10px 12px;
+  font-family: var(--font-sans);
+  font-size: 13px;
+  color: var(--ink-800);
+  background: var(--paper-card);
+  border: 1.5px solid var(--ink-200);
+  border-radius: var(--radius);
+  outline: none;
+  resize: none;
+  line-height: 1.6;
+  transition: border-color 0.15s;
+}
+
+.themeInput:focus {
+  border-color: var(--red-500);
+}
+
+.themeInputActions {
+  display: flex;
+  gap: 6px;
+  justify-content: flex-end;
+}
+
+.btnCancel {
+  padding: 6px 14px;
+  font-size: 12px;
+  background: var(--paper-warm);
+  border: 1px solid var(--ink-200);
+  border-radius: var(--radius-sm);
+  color: var(--ink-400);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.btnCancel:hover { background: var(--ink-100); }
+
+.btnAdd {
+  padding: 6px 16px;
+  font-size: 12px;
+  font-weight: 700;
+  background: var(--ink-800);
+  border: none;
+  border-radius: var(--radius-sm);
+  color: var(--paper);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.btnAdd:hover:not(:disabled) { background: var(--red-500); }
+.btnAdd:disabled { opacity: 0.4; cursor: not-allowed; }

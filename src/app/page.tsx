@@ -1,11 +1,6 @@
 "use client";
 
-/**
- * app/page.tsx
- * メインページ：記事一覧 + 詳細パネル + 操作ボタン
- */
-
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { Article } from "@/lib/notion";
 import Header from "@/components/Header";
 import ArticleCard from "@/components/ArticleCard";
@@ -14,15 +9,16 @@ import Toast, { ToastMessage } from "@/components/Toast";
 import styles from "./page.module.css";
 
 export default function HomePage() {
-  // ── State ──
   const [articles, setArticles]         = useState<Article[]>([]);
   const [selectedId, setSelectedId]     = useState<string | null>(null);
   const [isLoading, setIsLoading]       = useState(false);
   const [isFetching, setIsFetching]     = useState(true);
   const [toasts, setToasts]             = useState<ToastMessage[]>([]);
   const [filterStatus, setFilterStatus] = useState<string>("all");
+  const [manualTheme, setManualTheme]   = useState("");
+  const [showThemeInput, setShowThemeInput] = useState(false);
+  const themeInputRef = useRef<HTMLTextAreaElement>(null);
 
-  // ── Toast ヘルパー ──
   const addToast = useCallback(
     (type: ToastMessage["type"], message: string) => {
       const id = `${Date.now()}-${Math.random()}`;
@@ -35,25 +31,17 @@ export default function HomePage() {
     setToasts((prev) => prev.filter((t) => t.id !== id));
   }, []);
 
-  // ── 記事一覧を取得 ──
-    const fetchArticles = useCallback(async () => {
+  // ── 記事一覧を取得（キャッシュ完全無効）──
+  const fetchArticles = useCallback(async () => {
     setIsFetching(true);
     try {
-      // キャッシュを無効化して毎回最新データを取得
-      const res = await fetch("/api/articles?t=" + Date.now(), {
+      const res = await fetch(`/api/articles?t=${Date.now()}`, {
         cache: "no-store",
+        headers: { "Cache-Control": "no-cache" },
       });
       const data = await res.json();
       if (data.success) {
         setArticles(data.articles);
-        // 選択中の記事が更新されている場合、最新データに同期
-        setSelectedId((prev) => {
-  if (prev) {
-    const updated = data.articles.find((a: Article) => a.id === prev);
-    if (!updated) return null;
-  }
-  return prev;
-});
       } else {
         throw new Error(data.error);
       }
@@ -62,15 +50,13 @@ export default function HomePage() {
     } finally {
       setIsFetching(false);
     }
-  }, [selectedId, addToast]);
+  }, [addToast]);
 
-  // 初回ロード
   useEffect(() => {
     fetchArticles();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // ── テーマ生成 ──
+  // ── テーマ生成（Gemini）──
   const handleGenerateTheme = async () => {
     setIsLoading(true);
     addToast("info", "Gemini でテーマを生成中...");
@@ -79,7 +65,7 @@ export default function HomePage() {
       const data = await res.json();
       if (data.success) {
         addToast("success", `テーマを生成しました：「${data.data.theme}」`);
-        await fetchArticles(); // 一覧を再取得
+        await fetchArticles();
       } else {
         throw new Error(data.error || data.message);
       }
@@ -90,7 +76,33 @@ export default function HomePage() {
     }
   };
 
-  // ── 記事生成（ヘッダーから：次の未作成記事）──
+  // ── テーマ手動追加 ──
+  const handleAddManualTheme = async () => {
+    if (!manualTheme.trim()) return;
+    setIsLoading(true);
+    try {
+      const res = await fetch("/api/create-theme", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ theme: manualTheme.trim() }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        addToast("success", `テーマを追加しました：「${manualTheme.trim()}」`);
+        setManualTheme("");
+        setShowThemeInput(false);
+        await fetchArticles();
+      } else {
+        throw new Error(data.error || data.message);
+      }
+    } catch (error) {
+      addToast("error", `テーマ追加失敗: ${error instanceof Error ? error.message : "不明なエラー"}`);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // ── 記事生成（Claude）──
   const handleGenerateArticle = async () => {
     setIsLoading(true);
     addToast("info", "Claude で記事を生成中...（1〜2分かかります）");
@@ -98,9 +110,8 @@ export default function HomePage() {
       const res = await fetch("/api/generate-article", { method: "POST" });
       const data = await res.json();
       if (data.success) {
-        addToast("success", `記事を生成しました！タイトル：「${data.data.titles[0]}」`);
+        addToast("success", `記事を生成しました！`);
         await fetchArticles();
-        // 生成した記事を自動選択
         if (data.data.pageId) setSelectedId(data.data.pageId);
       } else {
         throw new Error(data.error || data.message);
@@ -112,7 +123,7 @@ export default function HomePage() {
     }
   };
 
-  // ── 再生成（特定の記事ID指定）──
+  // ── 再生成 ──
   const handleRegenerate = async (pageId: string, theme: string) => {
     setIsLoading(true);
     addToast("info", `「${theme}」の記事を再生成中...`);
@@ -137,17 +148,39 @@ export default function HomePage() {
     }
   };
 
-  // ── フィルタリング ──
+  // ── テーマ削除 ──
+  const handleDelete = async (pageId: string) => {
+    if (!confirm("このテーマを削除しますか？")) return;
+    setIsLoading(true);
+    try {
+      const res = await fetch("/api/delete-article", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ pageId }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        addToast("success", "削除しました");
+        if (selectedId === pageId) setSelectedId(null);
+        await fetchArticles();
+      } else {
+        throw new Error(data.error || data.message);
+      }
+    } catch (error) {
+      addToast("error", `削除失敗: ${error instanceof Error ? error.message : "不明なエラー"}`);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const filteredArticles = articles.filter((a) =>
     filterStatus === "all" ? true : a.status === filterStatus
   );
 
-  // 選択中の記事
   const selectedArticle = articles.find((a) => a.id === selectedId) ?? null;
 
-  // ── 統計 ──
   const stats = {
-    total: articles.length,
+    total:   articles.length,
     pending: articles.filter((a) => a.status === "未作成").length,
     done:    articles.filter((a) => a.status === "生成済").length,
     posted:  articles.filter((a) => a.status === "投稿済").length,
@@ -155,7 +188,6 @@ export default function HomePage() {
 
   return (
     <>
-      {/* ヘッダー */}
       <Header
         onGenerateTheme={handleGenerateTheme}
         onGenerateArticle={handleGenerateArticle}
@@ -163,11 +195,10 @@ export default function HomePage() {
       />
 
       <div className={styles.layout}>
-
-        {/* ── 左サイドバー：記事一覧 ── */}
+        {/* ── 左サイドバー ── */}
         <aside className={styles.sidebar}>
 
-          {/* 統計サマリー */}
+          {/* 統計 */}
           <div className={styles.statsGrid}>
             <div className={styles.statBox}>
               <span className={styles.statNum}>{stats.total}</span>
@@ -183,7 +214,47 @@ export default function HomePage() {
             </div>
           </div>
 
-          {/* フィルタータブ */}
+          {/* テーマ手動入力 */}
+          <div className={styles.manualThemeSection}>
+            {showThemeInput ? (
+              <div className={styles.themeInputWrap}>
+                <textarea
+                  ref={themeInputRef}
+                  className={styles.themeInput}
+                  placeholder="記事テーマを入力してください..."
+                  value={manualTheme}
+                  onChange={(e) => setManualTheme(e.target.value)}
+                  rows={3}
+                  maxLength={200}
+                />
+                <div className={styles.themeInputActions}>
+                  <button
+                    className={styles.btnCancel}
+                    onClick={() => { setShowThemeInput(false); setManualTheme(""); }}
+                  >
+                    キャンセル
+                  </button>
+                  <button
+                    className={styles.btnAdd}
+                    onClick={handleAddManualTheme}
+                    disabled={isLoading || !manualTheme.trim()}
+                  >
+                    追加
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <button
+                className={styles.btnAddTheme}
+                onClick={() => { setShowThemeInput(true); setTimeout(() => themeInputRef.current?.focus(), 100); }}
+                disabled={isLoading}
+              >
+                ＋ テーマを手動で追加
+              </button>
+            )}
+          </div>
+
+          {/* フィルター */}
           <div className={styles.filterTabs}>
             {[
               { value: "all",  label: "すべて" },
@@ -204,7 +275,6 @@ export default function HomePage() {
           {/* 記事リスト */}
           <div className={styles.articleList}>
             {isFetching ? (
-              // スケルトンローダー
               Array.from({ length: 5 }).map((_, i) => (
                 <div key={i} className={styles.skeletonCard}>
                   <div className={`skeleton ${styles.skeletonBadge}`} />
@@ -215,9 +285,7 @@ export default function HomePage() {
             ) : filteredArticles.length === 0 ? (
               <div className={styles.emptyList}>
                 <p>記事がありません</p>
-                <p className={styles.emptyListSub}>
-                  ヘッダーの「テーマ生成」から始めましょう
-                </p>
+                <p className={styles.emptyListSub}>テーマを生成または手動追加してください</p>
               </div>
             ) : (
               filteredArticles.map((article) => (
@@ -225,9 +293,8 @@ export default function HomePage() {
                   key={article.id}
                   article={article}
                   isSelected={selectedId === article.id}
-                  onClick={() => setSelectedId(
-                    selectedId === article.id ? null : article.id
-                  )}
+                  onClick={() => setSelectedId(selectedId === article.id ? null : article.id)}
+                  onDelete={() => handleDelete(article.id)}
                 />
               ))
             )}
@@ -239,16 +306,12 @@ export default function HomePage() {
             onClick={fetchArticles}
             disabled={isFetching}
           >
-            {isFetching ? (
-              <span className={styles.spinner} />
-            ) : (
-              "↻"
-            )}
+            {isFetching ? <span className={styles.spinner} /> : "↻"}
             一覧を更新
           </button>
         </aside>
 
-        {/* ── メインエリア：記事詳細 ── */}
+        {/* ── メインエリア ── */}
         <main className={styles.main}>
           {selectedArticle ? (
             <ArticleDetail
@@ -269,9 +332,7 @@ export default function HomePage() {
                   </svg>
                 </div>
                 <h3 className={styles.placeholderTitle}>記事を選択してください</h3>
-                <p className={styles.placeholderSub}>
-                  左のリストから記事を選ぶと<br />本文とタイトル案が表示されます
-                </p>
+                <p className={styles.placeholderSub}>左のリストから記事を選ぶと<br />本文とタイトル案が表示されます</p>
                 <div className={styles.placeholderFlow}>
                   <div className={styles.flowStep}>
                     <span className={styles.flowNum}>1</span>
@@ -294,7 +355,6 @@ export default function HomePage() {
         </main>
       </div>
 
-      {/* Toast 通知 */}
       <Toast messages={toasts} onRemove={removeToast} />
     </>
   );
