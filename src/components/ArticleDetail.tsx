@@ -45,6 +45,7 @@ export default function ArticleDetail({
   const [selectedTitleIdx, setSelectedTitleIdx] = useState(0);
   const [showCookieInput, setShowCookieInput]   = useState(false);
   const [sessionCookie, setSessionCookie]       = useState("");
+  const [statusState, setStatusState] = useState<"idle" | "updating" | "done">("idle");
 
   // タイトル案をパース
   const titles = article.titleCandidates
@@ -326,6 +327,53 @@ export default function ArticleDetail({
               別の記事を投稿する
             </button>
           )}
+{/* 投稿済みボタン */}
+      {article.body && (
+        <div className={styles.postedSection}>
+          {statusState === "done" || article.status === "投稿済" ? (
+            <div className={styles.postedBadge}>
+              ✓ 投稿済みとしてマーク済み
+            </div>
+          ) : (
+            <>
+              <p className={styles.postedLabel}>
+                noteへの投稿が完了したら以下のボタンを押してください
+              </p>
+              <button
+                className={styles.postedBtn}
+                onClick={async () => {
+                  setStatusState("updating");
+                  try {
+                    const res = await fetch("/api/update-status", {
+                      method: "POST",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({
+                        pageId: article.id,
+                        status: "投稿済",
+                      }),
+                    });
+                    const data = await res.json();
+                    if (data.success) {
+                      setStatusState("done");
+                    } else {
+                      throw new Error(data.error);
+                    }
+                  } catch {
+                    setStatusState("idle");
+                  }
+                }}
+                disabled={statusState === "updating"}
+              >
+                {statusState === "updating" ? (
+                  <><span className={styles.spinner} /> 更新中...</>
+                ) : (
+                  "✓ 投稿済みにする"
+                )}
+              </button>
+            </>
+          )}
+        </div>
+      )}
         </div>
       )}
     </div>

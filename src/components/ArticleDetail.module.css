@@ -524,3 +524,62 @@
   text-decoration: underline;
   white-space: nowrap;
 }
+/* 投稿済みセクション */
+.postedSection {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: clamp(16px, 2vw, 24px);
+  background: var(--paper-warm);
+  border: 1.5px solid var(--ink-100);
+  border-radius: var(--radius);
+}
+
+.postedLabel {
+  font-size: 12px;
+  color: var(--ink-400);
+  line-height: 1.6;
+}
+
+.postedBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  padding: 12px;
+  font-family: var(--font-sans);
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  background: var(--green-500);
+  color: white;
+  border: none;
+  border-radius: var(--radius);
+  cursor: pointer;
+  transition: all 0.18s;
+}
+
+.postedBtn:hover:not(:disabled) {
+  background: var(--green-600);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 16px rgba(58,107,74,0.3);
+}
+
+.postedBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.postedBadge {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 12px;
+  background: var(--green-dim);
+  border: 1px solid var(--green-500);
+  border-radius: var(--radius);
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--green-600);
+}
