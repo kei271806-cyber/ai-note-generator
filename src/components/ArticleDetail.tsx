@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Article } from "@/lib/notion";
 import styles from "./ArticleDetail.module.css";
+import XPostsPanel from "./XPostsPanel";
 
 interface ArticleDetailProps {
   article: Article;
@@ -373,6 +374,10 @@ export default function ArticleDetail({
             </>
           )}
         </div>
+      )}
+      {/* X投稿生成パネル */}
+      {article.body && (
+        <XPostsPanel articleBody={article.body} />
       )}
         </div>
       )}
