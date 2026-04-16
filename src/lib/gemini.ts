@@ -46,7 +46,7 @@ async function withRetry<T>(fn: () => Promise<T>, maxRetries = 3): Promise<T> {
  */
 export async function generateTheme(pastThemes: string[]): Promise<string> {
   // 使用するモデル（gemini-1.5-flash は高速・無料枠あり）
-  const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+  const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
   // 過去テーマをプロンプトに含める（最大30件）
   const recentThemes = pastThemes.slice(0, 30);
@@ -237,7 +237,7 @@ export async function generateArticle(theme: string): Promise<GeneratedArticle> 
 
   // ── Step 1: タイトル案を生成 ──
   const titleModel = genAI.getGenerativeModel({
-    model: "gemini-2.5-flash",
+    model: "gemini-1.5-flash",
     systemInstruction: TITLE_SYSTEM_PROMPT,
   });
 
@@ -270,7 +270,7 @@ export async function generateArticle(theme: string): Promise<GeneratedArticle> 
 
   // ── Step 2: 記事本文を生成 ──
   const articleModel = genAI.getGenerativeModel({
-    model: "gemini-2.5-flash",
+    model: "gemini-1.5-flash",
     systemInstruction: ARTICLE_SYSTEM_PROMPT,
   });
 
