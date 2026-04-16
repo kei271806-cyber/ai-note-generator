@@ -9,7 +9,7 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import { generateArticle } from "@/lib/claude";
+import { generateArticle } from "@/lib/gemini";
 import { getUnwrittenArticle, updateArticle } from "@/lib/notion";
 
 export async function POST(req: NextRequest) {
@@ -49,8 +49,8 @@ export async function POST(req: NextRequest) {
 
     console.log("[generate-article] テーマ:", theme, "/ PageID:", pageId);
 
-    // ── Step 2: Claude で記事を生成 ──
-    console.log("[generate-article] Claude で記事生成中...");
+    // ── Step 2: Gemini で記事を生成 ──
+    console.log("[generate-article] Gemini で記事生成中...");
     const { titles, article } = await generateArticle(theme);
     console.log("[generate-article] 記事生成完了:", titles[0]);
 

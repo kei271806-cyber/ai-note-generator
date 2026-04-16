@@ -160,7 +160,7 @@ export async function generateArticle(
         text: TITLE_SYSTEM_PROMPT,
         cache_control: { type: "ephemeral" },
       },
-    ] as Anthropic.TextBlockParam[],
+    ] as unknown as Anthropic.TextBlockParam[],
     messages: [
       {
         role: "user",
@@ -213,7 +213,7 @@ export async function generateArticle(
         text: ARTICLE_SYSTEM_PROMPT,
         cache_control: { type: "ephemeral" },
       },
-    ] as Anthropic.TextBlockParam[],
+    ] as unknown as Anthropic.TextBlockParam[],
     messages: [
       {
         role: "user",
