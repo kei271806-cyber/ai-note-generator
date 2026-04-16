@@ -6,9 +6,11 @@ import Header from "@/components/Header";
 import ArticleCard from "@/components/ArticleCard";
 import ArticleDetail from "@/components/ArticleDetail";
 import Toast, { ToastMessage } from "@/components/Toast";
+import { DEFAULT_CHANNEL_ID } from "@/lib/channels";
 import styles from "./page.module.css";
 
 export default function HomePage() {
+  const [channelId, setChannelId]       = useState(DEFAULT_CHANNEL_ID);
   const [articles, setArticles]         = useState<Article[]>([]);
   const [selectedId, setSelectedId]     = useState<string | null>(null);
   const [isLoading, setIsLoading]       = useState(false);
@@ -32,10 +34,10 @@ export default function HomePage() {
   }, []);
 
   // ── 記事一覧を取得（キャッシュ完全無効）──
-  const fetchArticles = useCallback(async () => {
+  const fetchArticles = useCallback(async (cid = channelId) => {
     setIsFetching(true);
     try {
-      const res = await fetch(`/api/articles?t=${Date.now()}`, {
+      const res = await fetch(`/api/articles?channelId=${cid}&t=${Date.now()}`, {
         cache: "no-store",
         headers: { "Cache-Control": "no-cache" },
       });
@@ -53,15 +55,25 @@ export default function HomePage() {
   }, [addToast]);
 
   useEffect(() => {
-    fetchArticles();
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+    fetchArticles(channelId);
+  }, [channelId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── テーマ生成（Gemini）──
+  const handleChannelChange = (newChannelId: string) => {
+    setChannelId(newChannelId);
+    setSelectedId(null);
+    setFilterStatus("all");
+  };
+
   const handleGenerateTheme = async () => {
     setIsLoading(true);
     addToast("info", "Gemini でテーマを生成中...");
     try {
-      const res = await fetch("/api/generate-theme", { method: "POST" });
+      const res = await fetch("/api/generate-theme", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ channelId }),
+      });
       const data = await res.json();
       if (data.success) {
         addToast("success", `テーマを生成しました：「${data.data.theme}」`);
@@ -84,7 +96,7 @@ export default function HomePage() {
       const res = await fetch("/api/create-theme", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ theme: manualTheme.trim() }),
+        body: JSON.stringify({ theme: manualTheme.trim(), channelId }),
       });
       const data = await res.json();
       if (data.success) {
@@ -102,12 +114,16 @@ export default function HomePage() {
     }
   };
 
-  // ── 記事生成（Claude）──
+  // ── 記事生成（Gemini）──
   const handleGenerateArticle = async () => {
     setIsLoading(true);
-    addToast("info", "Claude で記事を生成中...（1〜2分かかります）");
+    addToast("info", "Gemini で記事を生成中...（1〜2分かかります）");
     try {
-      const res = await fetch("/api/generate-article", { method: "POST" });
+      const res = await fetch("/api/generate-article", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ channelId }),
+      });
       const data = await res.json();
       if (data.success) {
         addToast("success", `記事を生成しました！`);
@@ -131,7 +147,7 @@ export default function HomePage() {
       const res = await fetch("/api/generate-article", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ pageId, theme }),
+        body: JSON.stringify({ pageId, theme, channelId }),
       });
       const data = await res.json();
       if (data.success) {
@@ -189,6 +205,8 @@ export default function HomePage() {
   return (
     <>
       <Header
+        channelId={channelId}
+        onChannelChange={handleChannelChange}
         onGenerateTheme={handleGenerateTheme}
         onGenerateArticle={handleGenerateArticle}
         isLoading={isLoading}
@@ -303,7 +321,7 @@ export default function HomePage() {
           {/* 更新ボタン */}
           <button
             className={styles.refreshBtn}
-            onClick={fetchArticles}
+            onClick={() => fetchArticles()}
             disabled={isFetching}
           >
             {isFetching ? <span className={styles.spinner} /> : "↻"}

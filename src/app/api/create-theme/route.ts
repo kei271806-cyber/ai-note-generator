@@ -5,12 +5,13 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { createTheme } from "@/lib/notion";
+import { getChannel, getNotionDbId, DEFAULT_CHANNEL_ID } from "@/lib/channels";
 
 export const dynamic = "force-dynamic";
 
 export async function POST(req: NextRequest) {
   try {
-    const { theme } = await req.json();
+    const { theme, channelId = DEFAULT_CHANNEL_ID } = await req.json();
 
     if (!theme || theme.trim().length === 0) {
       return NextResponse.json(
@@ -26,7 +27,9 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const article = await createTheme(theme.trim());
+    const channel = getChannel(channelId);
+    const dbId = getNotionDbId(channel);
+    const article = await createTheme(theme.trim(), dbId);
 
     return NextResponse.json({
       success: true,

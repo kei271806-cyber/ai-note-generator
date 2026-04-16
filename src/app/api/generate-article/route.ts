@@ -1,39 +1,30 @@
 /**
  * app/api/generate-article/route.ts
  * POST /api/generate-article
- *
- * 処理フロー：
- * 1. Notion から「ステータス=未作成」の記事を1件取得
- * 2. Claude で記事を生成
- * 3. Notion に本文・タイトル案を保存（ステータス: 生成済）
  */
 
 import { NextRequest, NextResponse } from "next/server";
 import { generateArticle } from "@/lib/gemini";
 import { getUnwrittenArticle, updateArticle } from "@/lib/notion";
+import { getChannel, getNotionDbId, DEFAULT_CHANNEL_ID } from "@/lib/channels";
 
 export async function POST(req: NextRequest) {
   console.log("[generate-article] 開始");
 
   try {
-    // ── Step 1: 未作成の記事を取得 ──
-    console.log("[generate-article] Notion から未作成記事を取得中...");
-    
-    // リクエストボディに pageId があればそれを優先（手動再生成用）
-    let pageId: string | null = null;
-    let theme: string | null = null;
+    const body = await req.json().catch(() => ({}));
+    const channelId = body?.channelId ?? DEFAULT_CHANNEL_ID;
+    const channel = getChannel(channelId);
+    const dbId = getNotionDbId(channel);
 
-    try {
-      const body = await req.json();
-      pageId = body?.pageId ?? null;
-      theme = body?.theme ?? null;
-    } catch {
-      // ボディなし（cron からの呼び出し）は問題なし
-    }
+    console.log(`[generate-article] チャンネル: ${channel.name}`);
+
+    let pageId: string | null = body?.pageId ?? null;
+    let theme: string | null = body?.theme ?? null;
 
     // pageId と theme が指定されていない場合は Notion から取得
     if (!pageId || !theme) {
-      const unwrittenArticle = await getUnwrittenArticle();
+      const unwrittenArticle = await getUnwrittenArticle(dbId);
 
       if (!unwrittenArticle) {
         console.log("[generate-article] 未作成の記事がありません");
@@ -49,36 +40,30 @@ export async function POST(req: NextRequest) {
 
     console.log("[generate-article] テーマ:", theme, "/ PageID:", pageId);
 
-    // ── Step 2: Gemini で記事を生成 ──
+    // ── Gemini で記事を生成 ──
     console.log("[generate-article] Gemini で記事生成中...");
-    const { titles, article } = await generateArticle(theme);
+    const { titles, article } = await generateArticle(
+      theme,
+      channel.titleSystemPrompt,
+      channel.articleSystemPrompt
+    );
     console.log("[generate-article] 記事生成完了:", titles[0]);
 
-    // ── Step 3: Notion に保存（リトライ付き）──
+    // ── Notion に保存 ──
     console.log("[generate-article] Notion に保存中...");
-    await updateArticle(pageId, article, titles, 3); // 最大3回リトライ
+    await updateArticle(pageId, article, titles, 3);
     console.log("[generate-article] Notion 保存完了");
 
     return NextResponse.json({
       success: true,
       message: "記事の生成・保存が完了しました",
-      data: {
-        pageId,
-        theme,
-        titles,
-        articleLength: article.length,
-      },
+      data: { pageId, theme, titles, articleLength: article.length, channelId },
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : "不明なエラー";
     console.error("[generate-article] エラー:", message);
-
     return NextResponse.json(
-      {
-        success: false,
-        message: "記事の生成に失敗しました",
-        error: message,
-      },
+      { success: false, message: "記事の生成に失敗しました", error: message },
       { status: 500 }
     );
   }

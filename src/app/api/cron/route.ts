@@ -1,22 +1,22 @@
 /**
  * app/api/cron/route.ts
- * GET /api/cron
+ * GET /api/cron?channelId=xxx
  *
- * Vercel Cron から毎日 JST 10:00（UTC 01:00）に呼び出される
- * 処理：テーマ生成 → 記事生成 を順番に実行
- *
- * セキュリティ：CRON_SECRET で認証
+ * Vercel Cron から各チャンネルごとに呼び出される
  */
 
 import { NextRequest, NextResponse } from "next/server";
+import { DEFAULT_CHANNEL_ID } from "@/lib/channels";
 
-export const maxDuration = 300; // 最大実行時間 5分（Vercel Pro プランでの設定）
+export const maxDuration = 300;
 
 export async function GET(req: NextRequest) {
-  console.log("[cron] Vercel Cron ジョブ開始:", new Date().toISOString());
+  const { searchParams } = new URL(req.url);
+  const channelId = searchParams.get("channelId") ?? DEFAULT_CHANNEL_ID;
+
+  console.log(`[cron] 開始: channelId=${channelId}`, new Date().toISOString());
 
   // ── セキュリティ認証 ──
-  // Vercel は自動的に Authorization ヘッダーを付与する
   const authHeader = req.headers.get("authorization");
   const cronSecret = process.env.CRON_SECRET;
 
@@ -24,6 +24,10 @@ export async function GET(req: NextRequest) {
     console.warn("[cron] 認証失敗: 不正なアクセス");
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+
+  const baseUrl = process.env.VERCEL_URL
+    ? `https://${process.env.VERCEL_URL}`
+    : "http://localhost:3000";
 
   const results = {
     themeGeneration: { success: false, message: "", data: null as unknown },
@@ -33,19 +37,13 @@ export async function GET(req: NextRequest) {
   // ── Step 1: テーマ生成 ──
   try {
     console.log("[cron] テーマ生成 API を呼び出し中...");
-
-    // 内部APIを呼び出す（絶対URLが必要）
-    const baseUrl = process.env.VERCEL_URL
-      ? `https://${process.env.VERCEL_URL}`
-      : "http://localhost:3000";
-
     const themeRes = await fetch(`${baseUrl}/api/generate-theme`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        // cron シークレットを内部APIにも渡す
         Authorization: `Bearer ${cronSecret}`,
       },
+      body: JSON.stringify({ channelId }),
     });
 
     const themeData = await themeRes.json();
@@ -66,23 +64,18 @@ export async function GET(req: NextRequest) {
     results.themeGeneration = { success: false, message, data: null };
   }
 
-  // テーマ生成後に少し待機（APIレート制限対策）
   await new Promise((r) => setTimeout(r, 2000));
 
   // ── Step 2: 記事生成 ──
   try {
     console.log("[cron] 記事生成 API を呼び出し中...");
-
-    const baseUrl = process.env.VERCEL_URL
-      ? `https://${process.env.VERCEL_URL}`
-      : "http://localhost:3000";
-
     const articleRes = await fetch(`${baseUrl}/api/generate-article`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${cronSecret}`,
       },
+      body: JSON.stringify({ channelId }),
     });
 
     const articleData = await articleRes.json();
@@ -110,6 +103,7 @@ export async function GET(req: NextRequest) {
 
   return NextResponse.json({
     success: allSuccess,
+    channelId,
     executedAt: new Date().toISOString(),
     results,
   });

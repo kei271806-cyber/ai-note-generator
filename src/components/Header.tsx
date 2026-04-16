@@ -2,19 +2,24 @@
 
 /**
  * components/Header.tsx
- * サイトヘッダー
+ * サイトヘッダー（チャンネル切り替え対応）
  */
 
 import { useState } from "react";
+import { CHANNELS } from "@/lib/channels";
 import styles from "./Header.module.css";
 
 interface HeaderProps {
+  channelId: string;
+  onChannelChange: (channelId: string) => void;
   onGenerateTheme: () => Promise<void>;
   onGenerateArticle: () => Promise<void>;
   isLoading: boolean;
 }
 
 export default function Header({
+  channelId,
+  onChannelChange,
   onGenerateTheme,
   onGenerateArticle,
   isLoading,
@@ -44,10 +49,20 @@ export default function Header({
           </h1>
         </div>
 
-        {/* ステータスバッジ */}
-        <div className={styles.badge}>
-          <span className={styles.dot} />
-          Gemini × Claude 搭載
+        {/* チャンネル切り替え */}
+        <div className={styles.channelSelect}>
+          <select
+            value={channelId}
+            onChange={(e) => onChannelChange(e.target.value)}
+            disabled={isLoading}
+            className={styles.channelDropdown}
+          >
+            {CHANNELS.map((ch) => (
+              <option key={ch.id} value={ch.id}>
+                {ch.name}
+              </option>
+            ))}
+          </select>
         </div>
 
         {/* アクションボタン */}

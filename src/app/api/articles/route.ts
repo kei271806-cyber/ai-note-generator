@@ -1,17 +1,23 @@
 /**
  * app/api/articles/route.ts
- * GET /api/articles - 記事一覧を返す（キャッシュ無効）
+ * GET /api/articles?channelId=xxx
  */
 
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { getArticles } from "@/lib/notion";
+import { getChannel, getNotionDbId, DEFAULT_CHANNEL_ID } from "@/lib/channels";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   try {
-    const articles = await getArticles();
+    const { searchParams } = new URL(req.url);
+    const channelId = searchParams.get("channelId") ?? DEFAULT_CHANNEL_ID;
+    const channel = getChannel(channelId);
+    const dbId = getNotionDbId(channel);
+
+    const articles = await getArticles(dbId);
     return NextResponse.json(
       { success: true, articles },
       {

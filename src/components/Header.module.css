@@ -74,6 +74,34 @@
   50% { opacity: 0.3; }
 }
 
+.channelSelect {
+  display: flex;
+  align-items: center;
+}
+
+.channelDropdown {
+  padding: 7px 12px;
+  font-family: var(--font-sans);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--ink-700);
+  background: var(--paper-warm);
+  border: 1.5px solid var(--ink-200);
+  border-radius: var(--radius);
+  cursor: pointer;
+  transition: border-color 0.18s;
+  outline: none;
+}
+
+.channelDropdown:hover:not(:disabled) {
+  border-color: var(--gold-400);
+}
+
+.channelDropdown:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 .actions {
   display: flex;
   gap: 8px;

@@ -13,8 +13,6 @@ const notion = new Client({
   auth: process.env.NOTION_API_KEY,
 });
 
-const DATABASE_ID = process.env.NOTION_DATABASE_ID!;
-
 // ─────────────────────────────────────────────────
 // 型定義
 // ─────────────────────────────────────────────────
@@ -73,10 +71,10 @@ function pageToArticle(page: any): Article {
 // ─────────────────────────────────────────────────
 // 1. 記事一覧を取得（最新順・最大50件）
 // ─────────────────────────────────────────────────
-export async function getArticles(): Promise<Article[]> {
+export async function getArticles(dbId: string): Promise<Article[]> {
   try {
     const response = await notion.databases.query({
-      database_id: DATABASE_ID,
+      database_id: dbId,
       sorts: [{ property: "作成日", direction: "descending" }],
       page_size: 50,
     });
@@ -90,10 +88,10 @@ export async function getArticles(): Promise<Article[]> {
 // ─────────────────────────────────────────────────
 // 2. ステータスが「未作成」の記事を1件取得
 // ─────────────────────────────────────────────────
-export async function getUnwrittenArticle(): Promise<Article | null> {
+export async function getUnwrittenArticle(dbId: string): Promise<Article | null> {
   try {
     const response = await notion.databases.query({
-      database_id: DATABASE_ID,
+      database_id: dbId,
       filter: {
         property: "ステータス",
         select: { equals: "未作成" },
@@ -116,10 +114,10 @@ export async function getUnwrittenArticle(): Promise<Article | null> {
 // ─────────────────────────────────────────────────
 // 3. 過去のテーマ一覧を取得（重複チェック用）
 // ─────────────────────────────────────────────────
-export async function getPastThemes(): Promise<string[]> {
+export async function getPastThemes(dbId: string): Promise<string[]> {
   try {
     const response = await notion.databases.query({
-      database_id: DATABASE_ID,
+      database_id: dbId,
       page_size: 100, // 過去100件のテーマをチェック
     });
 
@@ -136,12 +134,12 @@ export async function getPastThemes(): Promise<string[]> {
 // ─────────────────────────────────────────────────
 // 4. 新しいテーマ（記事）をNotionに追加
 // ─────────────────────────────────────────────────
-export async function createTheme(theme: string): Promise<Article> {
+export async function createTheme(theme: string, dbId: string): Promise<Article> {
   try {
     const today = new Date().toISOString().split("T")[0]; // YYYY-MM-DD
 
     const page = await notion.pages.create({
-      parent: { database_id: DATABASE_ID },
+      parent: { database_id: dbId },
       properties: {
         // タイトル
         タイトル: {
