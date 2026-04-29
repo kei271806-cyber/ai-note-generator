@@ -32,10 +32,10 @@ const AI_FUKUGYOU: Channel = {
 
 【テーマの条件】
 ・AI初心者でもすぐに実践できる具体的な内容
-・副業や仕事効率化に直結するもの
+・AIを活用した副業に直結するもの
 ・「〇〇する方法」「〇〇で稼ぐ」「〇〇を使った△△」など実用的な形式
 ・1〜2文で具体的に表現すること
-・最新のAIツール（ChatGPT, Claude, Gemini, Perplexity等）を活用した内容
+・最新のAIツール（ChatGPT, Claude, ClaudCode, Gemini, Manus,等）を活用した内容
 
 【出力ルール】
 ・テーマのみを1行で出力すること
