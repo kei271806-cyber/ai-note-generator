@@ -1,11 +1,11 @@
 /**
  * app/api/generate-article/route.ts
  * POST /api/generate-article
- * テーマ生成はGemini、記事生成はGeminiを使用
+ * テーマ生成はGemini、記事生成はClaudeを使用
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import { generateArticle } from "@/lib/gemini";
+import { generateArticle } from "@/lib/claude";
 import { getUnwrittenArticle, updateArticle } from "@/lib/notion";
 import { getChannel, getNotionDbId, DEFAULT_CHANNEL_ID } from "@/lib/channels";
 
@@ -30,7 +30,7 @@ export async function POST(req: NextRequest) {
     }
 
     console.log(`[generate-article] テーマ: ${article.theme} / PageID: ${article.pageId}`);
-    console.log(`[generate-article] Gemini で記事生成中...`);
+    console.log(`[generate-article] Claude で記事生成中...`);
 
     const { titles, article: content } = await generateArticle(
       article.theme,
