@@ -395,6 +395,18 @@ async function main() {
     success("channels.ts を生成しました");
     channels.forEach((ch) => { log(color.dim("   ・" + ch.name + "（ID: " + ch.id + "）")); });
 
+    // vercel.json 生成（チャンネルごとにcronを1時間ずらして設定）
+    const cronEntries = channels.map((ch, i) => ({
+      path: "/api/cron?channelId=" + ch.id,
+      schedule: "0 " + (i + 1) + " * * *",
+    }));
+    const vercelJson = JSON.stringify({ crons: cronEntries }, null, 2);
+    fs.writeFileSync("vercel.json", vercelJson, "utf8");
+    success("vercel.json を生成しました（" + channels.length + "チャンネル分のcronを設定）");
+    channels.forEach((ch, i) => {
+      log(color.dim("   ・" + ch.name + "：毎日 0" + (i + 1) + ":00 UTC（JST " + (i + 10) + ":00）"));
+    });
+
     // STEP 5: Notionデータベース作成
     step(5, "Notionデータベースを自動作成しています...");
     let rootPageId;
