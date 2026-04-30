@@ -41,7 +41,7 @@ export async function POST(req: NextRequest) {
     console.log(`[generate-article] 記事生成完了: ${titles[0]}`);
     console.log(`[generate-article] Notion に保存中...`);
 
-    await updateArticle(notionDbId, article.pageId, titles, content);
+    await updateArticle(article.pageId, content, titles);
 
     console.log(`[generate-article] Notion 保存完了`);
 
