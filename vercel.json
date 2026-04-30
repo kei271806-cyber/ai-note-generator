@@ -1,24 +1,8 @@
 {
   "crons": [
     {
-      "path": "/api/cron?channelId=ai-fukugyou",
+      "path": "/api/cron?channelId=my-channel",
       "schedule": "0 1 * * *"
-    },
-    {
-      "path": "/api/cron?channelId=ai-marketing",
-      "schedule": "0 2 * * *"
-    },
-    {
-      "path": "/api/cron?channelId=ai-news",
-      "schedule": "0 3 * * *"
-    },
-    {
-      "path": "/api/cron?channelId=security",
-      "schedule": "0 4 * * *"
-    },
-    {
-      "path": "/api/cron?channelId=book-summary",
-      "schedule": "0 5 * * *"
     }
   ]
 }
