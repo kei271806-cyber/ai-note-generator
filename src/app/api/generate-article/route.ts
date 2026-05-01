@@ -29,11 +29,11 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: false, message: "未作成の記事がありません" });
     }
 
-    console.log(`[generate-article] テーマ: ${article.theme} / PageID: ${article.pageId}`);
+    console.log(`[generate-article] テーマ: ${article.title} / PageID: ${article.id}`);
     console.log(`[generate-article] Claude で記事生成中...`);
 
     const { titles, article: content } = await generateArticle(
-      article.theme,
+      article.title,
       channel.titleSystemPrompt,
       channel.articleSystemPrompt
     );
@@ -41,7 +41,7 @@ export async function POST(req: NextRequest) {
     console.log(`[generate-article] 記事生成完了: ${titles[0]}`);
     console.log(`[generate-article] Notion に保存中...`);
 
-    await updateArticle(article.pageId, content, titles);
+    await updateArticle(article.id, content, titles);
 
     console.log(`[generate-article] Notion 保存完了`);
 
