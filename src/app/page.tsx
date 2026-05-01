@@ -114,10 +114,10 @@ export default function HomePage() {
     }
   };
 
-  // ── 記事生成（Gemini）──
+  // ── 記事生成（Claude）──
   const handleGenerateArticle = async () => {
     setIsLoading(true);
-    addToast("info", "Gemini で記事を生成中...（1〜2分かかります）");
+    addToast("info", "Claude で記事を生成中...（1〜2分かかります）");
     try {
       const res = await fetch("/api/generate-article", {
         method: "POST",
