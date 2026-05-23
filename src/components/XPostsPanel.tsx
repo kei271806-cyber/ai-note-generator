@@ -19,6 +19,7 @@ export default function XPostsPanel({ articleBody }: XPostsPanelProps) {
   const [noteUrl, setNoteUrl]     = useState("");
   const [copied, setCopied]       = useState(false);
   const [bufferState, setBufferState] = useState<"idle" | "posting" | "done" | "error">("idle");
+  const [bufferError, setBufferError] = useState("");
 
   const handleGenerate = async () => {
     if (!articleBody) return;
@@ -58,6 +59,7 @@ export default function XPostsPanel({ articleBody }: XPostsPanelProps) {
 
   const handlePostToBuffer = async () => {
     setBufferState("posting");
+    setBufferError("");
     try {
       const res = await fetch("/api/post-to-buffer", {
         method: "POST",
@@ -70,9 +72,11 @@ export default function XPostsPanel({ articleBody }: XPostsPanelProps) {
       } else {
         throw new Error(data.error);
       }
-    } catch {
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "不明なエラー";
+      setBufferError(msg);
       setBufferState("error");
-      setTimeout(() => setBufferState("idle"), 3000);
+      setTimeout(() => setBufferState("idle"), 5000);
     }
   };
 
@@ -152,6 +156,10 @@ export default function XPostsPanel({ articleBody }: XPostsPanelProps) {
               </button>
             </div>
           </div>
+
+          {bufferError && (
+            <div className={styles.error}>⚠ {bufferError}</div>
+          )}
 
         </div>
       )}
