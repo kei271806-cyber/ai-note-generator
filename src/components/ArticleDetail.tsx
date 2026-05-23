@@ -377,7 +377,7 @@ export default function ArticleDetail({
       )}
       {/* X投稿生成パネル */}
       {article.body && (
-        <XPostsPanel articleBody={article.body} />
+        <XPostsPanel articleBody={article.body} articleId={article.id} />
       )}
         </div>
       )}

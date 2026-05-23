@@ -10,23 +10,24 @@ import styles from "./XPostsPanel.module.css";
 
 interface XPostsPanelProps {
   articleBody: string;
+  articleId?: string;
 }
 
-export default function XPostsPanel({ articleBody }: XPostsPanelProps) {
+export default function XPostsPanel({ articleBody, articleId }: XPostsPanelProps) {
   const [post, setPost]           = useState<string>("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError]         = useState("");
   const [noteUrl, setNoteUrl]     = useState("");
   const [copied, setCopied]       = useState(false);
-  const [bufferState, setBufferState] = useState<"idle" | "posting" | "done" | "error">("idle");
-  const [bufferError, setBufferError] = useState("");
+  const [stockState, setStockState] = useState<"idle" | "saving" | "done" | "error">("idle");
+  const [stockError, setStockError] = useState("");
 
   const handleGenerate = async () => {
     if (!articleBody) return;
     setIsLoading(true);
     setError("");
     setPost("");
-    setBufferState("idle");
+    setStockState("idle");
 
     try {
       const res = await fetch("/api/generate-x-posts", {
@@ -57,26 +58,33 @@ export default function XPostsPanel({ articleBody }: XPostsPanelProps) {
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const handlePostToBuffer = async () => {
-    setBufferState("posting");
-    setBufferError("");
+  const handleSaveToStock = async () => {
+    setStockState("saving");
+    setStockError("");
     try {
-      const res = await fetch("/api/post-to-buffer", {
+      const res = await fetch("/api/posts", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text: post }),
+        body: JSON.stringify({
+          content: post,
+          source_type: "article",
+          source_id: articleId,
+          post_type: "短文",
+          priority: 5,
+          status: "draft",
+          platform: "threads",
+        }),
       });
-      const data = await res.json();
-      if (data.success) {
-        setBufferState("done");
-      } else {
-        throw new Error(data.error);
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error ?? `HTTP ${res.status}`);
       }
+      setStockState("done");
     } catch (err) {
       const msg = err instanceof Error ? err.message : "不明なエラー";
-      setBufferError(msg);
-      setBufferState("error");
-      setTimeout(() => setBufferState("idle"), 5000);
+      setStockError(msg);
+      setStockState("error");
+      setTimeout(() => setStockState("idle"), 5000);
     }
   };
 
@@ -143,22 +151,22 @@ export default function XPostsPanel({ articleBody }: XPostsPanelProps) {
               <span className={styles.charCount}>{post.length}文字</span>
               <button
                 className={`${styles.bufferBtn} ${
-                  bufferState === "done"  ? styles.bufferBtnDone  :
-                  bufferState === "error" ? styles.bufferBtnError : ""
+                  stockState === "done"  ? styles.bufferBtnDone  :
+                  stockState === "error" ? styles.bufferBtnError : ""
                 }`}
-                onClick={handlePostToBuffer}
-                disabled={bufferState === "posting" || bufferState === "done"}
+                onClick={handleSaveToStock}
+                disabled={stockState === "saving" || stockState === "done"}
               >
-                {bufferState === "posting" ? "送信中..." :
-                 bufferState === "done"    ? "✓ Threads 送信済み" :
-                 bufferState === "error"   ? "⚠ エラー" :
-                 "📨 Threads に投稿"}
+                {stockState === "saving" ? "保存中..." :
+                 stockState === "done"   ? "✓ ストックに追加済み" :
+                 stockState === "error"  ? "⚠ エラー" :
+                 "📥 ストックに追加"}
               </button>
             </div>
           </div>
 
-          {bufferError && (
-            <div className={styles.error}>⚠ {bufferError}</div>
+          {stockError && (
+            <div className={styles.error}>⚠ {stockError}</div>
           )}
 
         </div>
