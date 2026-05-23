@@ -1,7 +1,7 @@
 /**
  * app/api/generate-x-posts/route.ts
  * POST /api/generate-x-posts
- * 記事本文からX投稿を5つ生成する
+ * 記事本文からThreads投稿を1つ生成する
  */
 
 import Anthropic from "@anthropic-ai/sdk";
@@ -12,14 +12,6 @@ export const dynamic = "force-dynamic";
 const anthropic = new Anthropic({
   apiKey: (process.env.ANTHROPIC_API_KEY ?? "").trim(),
 });
-
-export interface XPosts {
-  hook:        string; // ① フック投稿
-  knowhow:     string; // ② ノウハウ投稿
-  experience:  string; // ③ 体験投稿
-  cta:         string; // ④ 誘導投稿
-  philosophy:  string; // ⑤ 思想投稿
-}
 
 export async function POST(req: NextRequest) {
   try {
@@ -33,58 +25,47 @@ export async function POST(req: NextRequest) {
     }
 
     const prompt = `あなたはSNSマーケティングのプロです。
-以下のnote記事をもとに、X（Twitter）投稿を5つ生成してください。
+以下のnote記事をもとに、Threads投稿を1つ生成してください。
 
 【目的】
 ・フォロワー増加
 ・noteへの誘導
 ・共感と保存を獲得
 
-【出力する投稿の種類（必ず5つ）】
-① フック投稿（バズ狙い）
-② ノウハウ投稿（価値提供）
-③ 体験投稿（共感）
-④ 誘導投稿（noteリンク付き）
-⑤ 思想投稿（フォロー獲得）
+【構成】
+フック（1〜2行）→ 価値提供（箇条書き3〜5点）→ CTA（noteリンク付き）
 
 【ルール】
-・各投稿は140〜260文字以内
+・300〜500文字
 ・スマホで読みやすく改行する
 ・難しい言葉は使わない
 ・1文は短くする
 ・箇条書きを使う
 ・感情 or 気づきを必ず入れる
-・断定口調でOK（〜です→〜）
+・断定口調でOK
+・最後にnoteのURLを入れる
 
 【重要】
 ・そのまま要約するのではなく「再構成」すること
-・それぞれ役割が違う投稿にすること
 ・読み手はAI初心者の会社員
 
 【noteのURL】
 ${noteUrl || "https://note.com/（あなたのURL）"}
 
 【出力フォーマット】
-以下のJSON形式のみで返すこと。
-{ と } の外側に文字を一切書かないこと：
+以下のJSON形式のみで返すこと。{ と } の外側に文字を一切書かないこと：
 {
-  "posts": {
-    "hook": "①の投稿文",
-    "knowhow": "②の投稿文",
-    "experience": "③の投稿文",
-    "cta": "④の投稿文（noteリンク入り）",
-    "philosophy": "⑤の投稿文"
-  }
+  "post": "投稿文"
 }
 
 【note記事本文】
 ${article.slice(0, 3000)}`;
 
-    console.log("[generate-x-posts] X投稿生成中...");
+    console.log("[generate-threads-post] Threads投稿生成中...");
 
     const response = await anthropic.messages.create({
       model: "claude-sonnet-4-5",
-      max_tokens: 2000,
+      max_tokens: 1000,
       messages: [{ role: "user", content: prompt }],
     });
 
@@ -93,22 +74,23 @@ ${article.slice(0, 3000)}`;
       .join("")
       .trim();
 
-    // JSONをパース
-    const cleaned = rawText
-      .replace(/```json\n?/g, "")
-      .replace(/```\n?/g, "")
-      .trim();
+    const match = rawText.match(/\{[\s\S]*\}/);
+    if (!match) {
+      throw new Error("Claude からの JSON レスポンスが見つかりませんでした");
+    }
+    const parsed = JSON.parse(match[0]);
+    const post: string = parsed.post;
+    if (!post) {
+      throw new Error("Claude のレスポンスに post フィールドがありませんでした");
+    }
 
-    const parsed = JSON.parse(cleaned);
-    const posts: XPosts = parsed.posts;
+    console.log("[generate-threads-post] 生成完了");
 
-    console.log("[generate-x-posts] 生成完了");
-
-    return NextResponse.json({ success: true, posts });
+    return NextResponse.json({ success: true, post });
 
   } catch (error) {
     const message = error instanceof Error ? error.message : "不明なエラー";
-    console.error("[generate-x-posts] エラー:", message);
+    console.error("[generate-threads-post] エラー:", message);
     return NextResponse.json(
       { success: false, error: message },
       { status: 500 }

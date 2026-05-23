@@ -239,3 +239,44 @@ export async function getArticleById(pageId: string): Promise<Article | null> {
     return null;
   }
 }
+
+// ─────────────────────────────────────────────────
+// 7. X投稿を XPosts DB に保存
+// ─────────────────────────────────────────────────
+export interface XPostsData {
+  articleTitle: string;
+  articleId: string;
+  noteUrl: string;
+  hook: string;
+  knowhow: string;
+  experience: string;
+  cta: string;
+  philosophy: string;
+}
+
+export async function saveXPosts(data: XPostsData): Promise<string> {
+  const dbId = process.env.NOTION_XPOSTS_DB_ID;
+  if (!dbId) throw new Error("NOTION_XPOSTS_DB_ID が未設定です");
+
+  const today = new Date().toISOString().split("T")[0];
+
+  const page = await notion.pages.create({
+    parent: { database_id: dbId },
+    properties: {
+      タイトル: {
+        title: [{ type: "text", text: { content: data.articleTitle } }],
+      },
+      ステータス: { select: { name: "未投稿" } },
+      フック:   { rich_text: [{ type: "text", text: { content: data.hook.slice(0, 1900) } }] },
+      ノウハウ: { rich_text: [{ type: "text", text: { content: data.knowhow.slice(0, 1900) } }] },
+      体験:     { rich_text: [{ type: "text", text: { content: data.experience.slice(0, 1900) } }] },
+      誘導:     { rich_text: [{ type: "text", text: { content: data.cta.slice(0, 1900) } }] },
+      思想:     { rich_text: [{ type: "text", text: { content: data.philosophy.slice(0, 1900) } }] },
+      ...(data.noteUrl ? { noteURL: { url: data.noteUrl } } : {}),
+      記事ID:   { rich_text: [{ type: "text", text: { content: data.articleId } }] },
+      作成日:   { date: { start: today } },
+    },
+  });
+
+  return page.id;
+}

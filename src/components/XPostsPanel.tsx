@@ -2,45 +2,30 @@
 
 /**
  * components/XPostsPanel.tsx
- * X投稿の生成・表示・コピーパネル
+ * Threads投稿の生成・表示・コピーパネル
  */
 
 import { useState } from "react";
 import styles from "./XPostsPanel.module.css";
 
-interface XPosts {
-  hook:       string;
-  knowhow:    string;
-  experience: string;
-  cta:        string;
-  philosophy: string;
-}
-
 interface XPostsPanelProps {
   articleBody: string;
 }
 
-const POST_LABELS = [
-  { key: "hook",        icon: "🔥", label: "① フック投稿",    desc: "バズ狙い" },
-  { key: "knowhow",     icon: "💡", label: "② ノウハウ投稿",  desc: "価値提供" },
-  { key: "experience",  icon: "💬", label: "③ 体験投稿",      desc: "共感" },
-  { key: "cta",         icon: "📎", label: "④ 誘導投稿",      desc: "noteリンク付き" },
-  { key: "philosophy",  icon: "✨", label: "⑤ 思想投稿",      desc: "フォロー獲得" },
-] as const;
-
 export default function XPostsPanel({ articleBody }: XPostsPanelProps) {
-  const [posts, setPosts]         = useState<XPosts | null>(null);
+  const [post, setPost]           = useState<string>("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError]         = useState("");
   const [noteUrl, setNoteUrl]     = useState("");
-  const [copiedKey, setCopiedKey] = useState<string | null>(null);
+  const [copied, setCopied]       = useState(false);
+  const [bufferState, setBufferState] = useState<"idle" | "posting" | "done" | "error">("idle");
 
-  // X投稿を生成
   const handleGenerate = async () => {
     if (!articleBody) return;
     setIsLoading(true);
     setError("");
-    setPosts(null);
+    setPost("");
+    setBufferState("idle");
 
     try {
       const res = await fetch("/api/generate-x-posts", {
@@ -54,7 +39,7 @@ export default function XPostsPanel({ articleBody }: XPostsPanelProps) {
 
       const data = await res.json();
       if (data.success) {
-        setPosts(data.posts);
+        setPost(data.post);
       } else {
         throw new Error(data.error);
       }
@@ -65,22 +50,30 @@ export default function XPostsPanel({ articleBody }: XPostsPanelProps) {
     }
   };
 
-  // コピー
-  const handleCopy = async (key: string, text: string) => {
-    await navigator.clipboard.writeText(text).catch(() => {});
-    setCopiedKey(key);
-    setTimeout(() => setCopiedKey(null), 2000);
+  const handleCopy = async () => {
+    await navigator.clipboard.writeText(post).catch(() => {});
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
   };
 
-  // 全件コピー
-  const handleCopyAll = async () => {
-    if (!posts) return;
-    const allText = POST_LABELS
-      .map((p) => `${p.icon} ${p.label}\n${posts[p.key]}\n`)
-      .join("\n");
-    await navigator.clipboard.writeText(allText).catch(() => {});
-    setCopiedKey("all");
-    setTimeout(() => setCopiedKey(null), 2000);
+  const handlePostToBuffer = async () => {
+    setBufferState("posting");
+    try {
+      const res = await fetch("/api/post-to-buffer", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text: post }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setBufferState("done");
+      } else {
+        throw new Error(data.error);
+      }
+    } catch {
+      setBufferState("error");
+      setTimeout(() => setBufferState("idle"), 3000);
+    }
   };
 
   return (
@@ -89,10 +82,10 @@ export default function XPostsPanel({ articleBody }: XPostsPanelProps) {
       {/* ヘッダー */}
       <div className={styles.header}>
         <div className={styles.headerLeft}>
-          <span className={styles.headerIcon}>𝕏</span>
+          <span className={styles.headerIcon}>T</span>
           <div>
-            <p className={styles.headerTitle}>X投稿を自動生成</p>
-            <p className={styles.headerSub}>記事からnote誘導ポストを5種類作成</p>
+            <p className={styles.headerTitle}>Threads投稿を自動生成</p>
+            <p className={styles.headerSub}>記事からnote誘導ポストを作成</p>
           </div>
         </div>
       </div>
@@ -100,7 +93,7 @@ export default function XPostsPanel({ articleBody }: XPostsPanelProps) {
       {/* noteのURL入力 */}
       <div className={styles.urlSection}>
         <label className={styles.urlLabel}>
-          noteのURL（任意・④誘導投稿に使用）
+          noteのURL（任意・投稿末尾に挿入）
         </label>
         <input
           type="text"
@@ -118,9 +111,9 @@ export default function XPostsPanel({ articleBody }: XPostsPanelProps) {
         disabled={isLoading || !articleBody}
       >
         {isLoading ? (
-          <><span className={styles.spinner} /> X投稿を生成中...</>
+          <><span className={styles.spinner} /> 生成中...</>
         ) : (
-          <>𝕏 X投稿を5つ生成する</>
+          <>📝 Threads投稿を生成する</>
         )}
       </button>
 
@@ -129,47 +122,37 @@ export default function XPostsPanel({ articleBody }: XPostsPanelProps) {
         <div className={styles.error}>⚠ {error}</div>
       )}
 
-      {/* 投稿一覧 */}
-      {posts && (
+      {/* 投稿 */}
+      {post && (
         <div className={styles.postsSection}>
 
-          {/* 全件コピー */}
           <div className={styles.allCopyRow}>
             <span className={styles.postsTitle}>生成された投稿</span>
-            <button
-              className={styles.allCopyBtn}
-              onClick={handleCopyAll}
-            >
-              {copiedKey === "all" ? "✓ コピー完了" : "📋 全件コピー"}
+            <button className={styles.allCopyBtn} onClick={handleCopy}>
+              {copied ? "✓ コピー完了" : "📋 コピー"}
             </button>
           </div>
 
-          {/* 各投稿 */}
-          {POST_LABELS.map((item) => (
-            <div key={item.key} className={styles.postCard}>
-              <div className={styles.postHeader}>
-                <div className={styles.postMeta}>
-                  <span className={styles.postIcon}>{item.icon}</span>
-                  <span className={styles.postLabel}>{item.label}</span>
-                  <span className={styles.postDesc}>{item.desc}</span>
-                </div>
-                <button
-                  className={`${styles.copyBtn} ${copiedKey === item.key ? styles.copyBtnDone : ""}`}
-                  onClick={() => handleCopy(item.key, posts[item.key])}
-                >
-                  {copiedKey === item.key ? "✓ 完了" : "📋 コピー"}
-                </button>
-              </div>
-              <div className={styles.postBody}>
-                {posts[item.key]}
-              </div>
-              <div className={styles.postFooter}>
-                <span className={styles.charCount}>
-                  {posts[item.key].length}文字
-                </span>
-              </div>
+          <div className={styles.postCard}>
+            <div className={styles.postBody}>{post}</div>
+            <div className={styles.postFooter}>
+              <span className={styles.charCount}>{post.length}文字</span>
+              <button
+                className={`${styles.bufferBtn} ${
+                  bufferState === "done"  ? styles.bufferBtnDone  :
+                  bufferState === "error" ? styles.bufferBtnError : ""
+                }`}
+                onClick={handlePostToBuffer}
+                disabled={bufferState === "posting" || bufferState === "done"}
+              >
+                {bufferState === "posting" ? "送信中..." :
+                 bufferState === "done"    ? "✓ Threads 送信済み" :
+                 bufferState === "error"   ? "⚠ エラー" :
+                 "📨 Threads に投稿"}
+              </button>
             </div>
-          ))}
+          </div>
+
         </div>
       )}
     </div>
