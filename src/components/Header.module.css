@@ -74,6 +74,35 @@
   50% { opacity: 0.3; }
 }
 
+.nav {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.navLink {
+  padding: 6px 12px;
+  font-family: var(--font-sans);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--ink-500);
+  border-radius: var(--radius);
+  text-decoration: none;
+  transition: all 0.18s;
+  white-space: nowrap;
+}
+
+.navLink:hover {
+  background: var(--gold-dim);
+  color: var(--gold-600);
+}
+
+.navLinkActive {
+  background: var(--ink-100);
+  color: var(--ink-800);
+  font-weight: 700;
+}
+
 .channelSelect {
   display: flex;
   align-items: center;

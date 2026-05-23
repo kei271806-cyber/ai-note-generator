@@ -1,0 +1,40 @@
+.nav {
+  background: rgba(253, 250, 246, 0.95);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid #e8e0d6;
+  padding: 0 clamp(16px, 4vw, 48px);
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
+.inner {
+  max-width: 1200px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  height: 48px;
+}
+
+.link {
+  padding: 6px 14px;
+  font-size: 13px;
+  font-weight: 500;
+  color: #6b7280;
+  border-radius: 6px;
+  text-decoration: none;
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+
+.link:hover {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.linkActive {
+  background: #1f2937;
+  color: #fff;
+  font-weight: 700;
+}

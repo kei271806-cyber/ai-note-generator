@@ -121,6 +121,15 @@
   color: var(--red-500);
 }
 
+.notionSaved {
+  padding: 10px 14px;
+  background: var(--green-dim, #f0fdf4);
+  border: 1px solid var(--green-500, #22c55e);
+  border-radius: var(--radius-sm);
+  font-size: 12px;
+  color: var(--green-600, #16a34a);
+}
+
 /* 投稿一覧 */
 .postsSection {
   display: flex;
@@ -237,13 +246,42 @@
 .postFooter {
   padding: 6px 14px;
   border-top: 1px solid var(--ink-100);
-  text-align: right;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
 }
 
 .charCount {
   font-family: var(--font-mono);
   font-size: 10px;
   color: var(--ink-400);
+}
+
+.bufferBtn {
+  font-size: 11px;
+  padding: 3px 10px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--ink-200);
+  background: var(--ink-50, #f9f9f9);
+  color: var(--ink-600);
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.bufferBtn:hover:not(:disabled) {
+  background: var(--ink-100);
+}
+.bufferBtn:disabled {
+  cursor: default;
+  opacity: 0.7;
+}
+.bufferBtnDone {
+  border-color: var(--green-500, #22c55e);
+  color: var(--green-600, #16a34a);
+  background: var(--green-dim, #f0fdf4);
+}
+.bufferBtnError {
+  border-color: var(--red-500);
+  color: var(--red-500);
 }
 
 .spinner {

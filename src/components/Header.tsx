@@ -6,6 +6,8 @@
  */
 
 import { useState } from "react";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { CHANNELS } from "@/lib/channels";
 import styles from "./Header.module.css";
 
@@ -25,6 +27,7 @@ export default function Header({
   isLoading,
 }: HeaderProps) {
   const [activeAction, setActiveAction] = useState<string | null>(null);
+  const pathname = usePathname();
 
   const handleTheme = async () => {
     setActiveAction("theme");
@@ -48,6 +51,19 @@ export default function Header({
             <span className={styles.logoAccent}>note</span>記事自動生成
           </h1>
         </div>
+
+        {/* ナビゲーション */}
+        <nav className={styles.nav}>
+          <Link href="/" className={`${styles.navLink} ${pathname === "/" ? styles.navLinkActive : ""}`}>
+            記事生成
+          </Link>
+          <Link href="/memo" className={`${styles.navLink} ${pathname === "/memo" ? styles.navLinkActive : ""}`}>
+            メモ変換
+          </Link>
+          <Link href="/queue" className={`${styles.navLink} ${pathname === "/queue" ? styles.navLinkActive : ""}`}>
+            Queue
+          </Link>
+        </nav>
 
         {/* チャンネル切り替え */}
         <div className={styles.channelSelect}>
