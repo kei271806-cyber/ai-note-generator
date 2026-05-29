@@ -18,6 +18,7 @@ export default function QueuePage() {
   const [posts, setPosts]           = useState<XPost[]>([])
   const [filter, setFilter]         = useState<PostStatus | 'all'>('all')
   const [bufferCount, setBufferCount] = useState<number | null>(null)
+  const [stockSummary, setStockSummary] = useState<{ threads: number; x: number } | null>(null)
   const [loading, setLoading]       = useState(true)
 
   const fetchPosts = async (f: PostStatus | 'all') => {
@@ -42,9 +43,20 @@ export default function QueuePage() {
     }
   }
 
+  const fetchStockSummary = async () => {
+    try {
+      const res = await fetch('/api/posts/summary')
+      const data = await res.json()
+      setStockSummary({ threads: data.threads?.total ?? 0, x: data.x?.total ?? 0 })
+    } catch {
+      setStockSummary(null)
+    }
+  }
+
   useEffect(() => {
     fetchPosts(filter)
     fetchBufferCount()
+    fetchStockSummary()
   }, [filter])
 
   const handleStatusChange = async (post: XPost, status: PostStatus) => {
@@ -61,17 +73,30 @@ export default function QueuePage() {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
         <h1 style={{ fontSize: '1.5rem', fontWeight: 700, margin: 0 }}>投稿Queue</h1>
         <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-          {bufferCount !== null && (
-            <span style={{
-              padding: '0.25rem 0.75rem',
-              borderRadius: 9999,
-              fontSize: '0.875rem',
-              fontWeight: 600,
-              background: bufferCount < 3 ? '#fee2e2' : '#d1fae5',
-              color: bufferCount < 3 ? '#991b1b' : '#065f46',
-            }}>
-              Buffer: {bufferCount}件
-            </span>
+          {stockSummary !== null && (
+            <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+              <span style={{ fontSize: '0.75rem', color: '#6b7280' }}>ストック:</span>
+              <span style={{
+                padding: '0.25rem 0.75rem',
+                borderRadius: 9999,
+                fontSize: '0.875rem',
+                fontWeight: 600,
+                background: stockSummary.threads === 0 ? '#fee2e2' : '#ede9fe',
+                color: stockSummary.threads === 0 ? '#991b1b' : '#5b21b6',
+              }}>
+                Threads {stockSummary.threads}件
+              </span>
+              <span style={{
+                padding: '0.25rem 0.75rem',
+                borderRadius: 9999,
+                fontSize: '0.875rem',
+                fontWeight: 600,
+                background: stockSummary.x === 0 ? '#fee2e2' : '#f3f4f6',
+                color: stockSummary.x === 0 ? '#991b1b' : '#374151',
+              }}>
+                𝕏 {stockSummary.x}件
+              </span>
+            </div>
           )}
         </div>
       </div>
