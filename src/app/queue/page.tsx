@@ -20,6 +20,8 @@ export default function QueuePage() {
   const [bufferCount, setBufferCount] = useState<number | null>(null)
   const [stockSummary, setStockSummary] = useState<{ threads: number; x: number } | null>(null)
   const [loading, setLoading]       = useState(true)
+  const [refilling, setRefilling]   = useState(false)
+  const [refillLog, setRefillLog]   = useState<string[] | null>(null)
 
   const fetchPosts = async (f: PostStatus | 'all') => {
     setLoading(true)
@@ -59,6 +61,21 @@ export default function QueuePage() {
     fetchStockSummary()
   }, [filter])
 
+  const handleRefill = async () => {
+    setRefilling(true)
+    setRefillLog(null)
+    try {
+      const res = await fetch('/api/buffer/refill', { method: 'POST' })
+      const data = await res.json()
+      setRefillLog(data.log ?? [`補充数: ${data.refilled ?? 0}`])
+      fetchStockSummary()
+    } catch (e) {
+      setRefillLog([`エラー: ${e instanceof Error ? e.message : '不明'}`])
+    } finally {
+      setRefilling(false)
+    }
+  }
+
   const handleStatusChange = async (post: XPost, status: PostStatus) => {
     await fetch(`/api/posts/${post.notion_page_id}`, {
       method: 'PATCH',
@@ -73,6 +90,22 @@ export default function QueuePage() {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
         <h1 style={{ fontSize: '1.5rem', fontWeight: 700, margin: 0 }}>投稿Queue</h1>
         <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+          <button
+            onClick={handleRefill}
+            disabled={refilling}
+            style={{
+              padding: '0.25rem 0.75rem',
+              borderRadius: 6,
+              border: 'none',
+              cursor: refilling ? 'not-allowed' : 'pointer',
+              fontSize: '0.875rem',
+              fontWeight: 600,
+              background: refilling ? '#e5e7eb' : '#111827',
+              color: refilling ? '#6b7280' : '#fff',
+            }}
+          >
+            {refilling ? '補充中...' : '▶ 今すぐ補充'}
+          </button>
           {stockSummary !== null && (
             <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
               <span style={{ fontSize: '0.75rem', color: '#6b7280' }}>ストック:</span>
@@ -100,6 +133,17 @@ export default function QueuePage() {
           )}
         </div>
       </div>
+
+      {/* 補充ログ */}
+      {refillLog && (
+        <div style={{ marginBottom: '1rem', padding: '0.75rem 1rem', background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: 8, fontSize: '0.8rem', fontFamily: 'monospace' }}>
+          {refillLog.map((line, i) => (
+            <div key={i} style={{ color: line.includes('✗') || line.includes('エラー') ? '#991b1b' : line.includes('✓') ? '#065f46' : '#374151' }}>
+              {line}
+            </div>
+          ))}
+        </div>
+      )}
 
       {/* フィルター */}
       <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginBottom: '1.5rem' }}>
