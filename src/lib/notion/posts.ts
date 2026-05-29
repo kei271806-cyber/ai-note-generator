@@ -1,7 +1,7 @@
 import { Client } from '@notionhq/client'
 import type { XPost, PostStatus, SourceType, QueueBalance, Platform } from '@/types'
 
-const notion = new Client({ auth: process.env.NOTION_TOKEN })
+const notion = new Client({ auth: process.env.NOTION_API_KEY })
 
 function getDbId(): string {
   const id = process.env.NOTION_POSTS_DB_ID
