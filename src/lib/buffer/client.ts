@@ -1,4 +1,4 @@
-const BUFFER_API = 'https://api.buffer.com'
+const BUFFER_API = 'https://api.buffer.com/graphql'
 
 function getApiKey(): string {
   const key = process.env.BUFFER_API_KEY
@@ -6,12 +6,18 @@ function getApiKey(): string {
   return key
 }
 
-function getChannelId(platform: 'threads' | 'x' = 'threads'): string {
+export function getChannelId(platform: 'threads' | 'x' = 'threads'): string {
   const id = platform === 'x'
     ? process.env.BUFFER_X_CHANNEL_ID
     : process.env.BUFFER_THREADS_CHANNEL_ID
   if (!id) throw new Error(`BUFFER_${platform.toUpperCase()}_CHANNEL_ID が未設定です`)
   return id
+}
+
+export function isChannelConfigured(platform: 'threads' | 'x'): boolean {
+  return platform === 'x'
+    ? !!process.env.BUFFER_X_CHANNEL_ID
+    : !!process.env.BUFFER_THREADS_CHANNEL_ID
 }
 
 async function bufferQuery(apiKey: string, query: string) {
@@ -29,7 +35,10 @@ async function bufferQuery(apiKey: string, query: string) {
 
 export async function getBufferQueueCount(
   platform: 'threads' | 'x' = 'threads'
-): Promise<{ pending_count: number }> {
+): Promise<{ pending_count: number; error?: string }> {
+  if (!isChannelConfigured(platform)) {
+    return { pending_count: 0, error: `BUFFER_${platform.toUpperCase()}_CHANNEL_ID が未設定です` }
+  }
   try {
     const apiKey = getApiKey()
     const channelId = getChannelId(platform)
@@ -42,8 +51,9 @@ export async function getBufferQueueCount(
     `)
     const edges = data?.data?.posts?.edges ?? []
     return { pending_count: edges.length }
-  } catch {
-    return { pending_count: 0 }
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : '不明なエラー'
+    return { pending_count: 0, error: msg }
   }
 }
 

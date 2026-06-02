@@ -9,7 +9,7 @@ import { Client } from "@notionhq/client";
 
 export const dynamic = "force-dynamic";
 
-const BUFFER_API = "https://api.buffer.com";
+const BUFFER_API = "https://api.buffer.com/graphql";
 
 function buildMutation(text: string, channelId: string): string {
   return `mutation {

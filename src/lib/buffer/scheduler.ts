@@ -1,4 +1,4 @@
-import { getBufferQueueCount, addToBuffer } from './client'
+import { getBufferQueueCount, addToBuffer, isChannelConfigured } from './client'
 import { getApprovedPosts, updatePostStatus } from '@/lib/notion/posts'
 import { getQueueBalance } from '@/lib/queue/balance'
 import type { Platform } from '@/types'
@@ -11,7 +11,15 @@ async function refillPlatform(
   balance: ReturnType<typeof getQueueBalance> extends Promise<infer T> ? T : never,
   log: string[]
 ): Promise<number> {
-  const { pending_count } = await getBufferQueueCount(platform)
+  if (!isChannelConfigured(platform)) {
+    log.push(`[${platform}] スキップ: BUFFER_${platform.toUpperCase()}_CHANNEL_ID が未設定`)
+    return 0
+  }
+
+  const { pending_count, error } = await getBufferQueueCount(platform)
+  if (error) {
+    log.push(`[${platform}] Buffer件数取得エラー: ${error}`)
+  }
   log.push(`[${platform}] Buffer残数: ${pending_count}`)
 
   if (pending_count >= BUFFER_MIN_COUNT) {
