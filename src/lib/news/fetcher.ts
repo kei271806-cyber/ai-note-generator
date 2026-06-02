@@ -91,7 +91,7 @@ export async function runNewsFetchWorker(): Promise<{ saved: number; log: string
         .filter((item) => isRecent(item.pubDate))
         .slice(0, source.maxItems)
 
-      log.push(`[${source.name}] ${items.length}件（直近2日）`)
+      log.push(`[${source.name}] ${items.length}件（直近3日）`)
 
       for (const item of items) {
         const sourceId = item.link
