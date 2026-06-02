@@ -4,14 +4,6 @@ export const dynamic = 'force-dynamic'
 
 const NOTE_API = 'https://note.com/api'
 
-const NOTE_HEADERS_BASE = {
-  'Content-Type': 'application/json',
-  'Origin': 'https://editor.note.com',
-  'Referer': 'https://editor.note.com/',
-  'X-Requested-With': 'XMLHttpRequest',
-  'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-}
-
 function parseCookieString(raw: string): Record<string, string> {
   const result: Record<string, string> = {}
   for (const part of raw.split(';')) {
@@ -22,6 +14,19 @@ function parseCookieString(raw: string): Record<string, string> {
     if (key) result[key] = val
   }
   return result
+}
+
+function buildHeaders(cookieStr: string, xsrfToken?: string) {
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+    'Cookie': cookieStr,
+    'Origin': 'https://editor.note.com',
+    'Referer': 'https://editor.note.com/',
+    'X-Requested-With': 'XMLHttpRequest',
+    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+  }
+  if (xsrfToken) headers['X-XSRF-TOKEN'] = xsrfToken
+  return headers
 }
 
 export async function POST(req: NextRequest) {
@@ -36,39 +41,24 @@ export async function POST(req: NextRequest) {
     }
 
     const rawCookie = (sessionCookie as string).trim()
+    const cookies = parseCookieString(rawCookie)
 
-    // Cookie文字列全体が貼り付けられた場合はパース、値だけの場合はそのまま使用
-    const isFullCookieString = rawCookie.includes('=') && rawCookie.includes(';')
-    const cookies = isFullCookieString ? parseCookieString(rawCookie) : {}
+    // _note_session_v5 の存在確認
+    if (!cookies['_note_session_v5']) {
+      return NextResponse.json(
+        { success: false, error: 'Cookie文字列に _note_session_v5 が見つかりません。F12 → Network → リクエスト選択 → Request Headers の Cookie 行全体をコピーしてください。' },
+        { status: 400 }
+      )
+    }
 
-    const noteSession = isFullCookieString
-      ? cookies['_note_session_v5']
-      : rawCookie
+    // XSRF-TOKEN があれば使う（なくても試みる）
     const xsrfRaw = cookies['XSRF-TOKEN'] ?? cookies['xsrf-token'] ?? ''
-    const xsrfToken = xsrfRaw ? decodeURIComponent(xsrfRaw) : ''
+    const xsrfToken = xsrfRaw ? decodeURIComponent(xsrfRaw) : undefined
 
-    if (!noteSession) {
-      return NextResponse.json(
-        { success: false, error: 'Cookie文字列から _note_session_v5 が見つかりませんでした。Cookie行全体をコピーしてください。' },
-        { status: 400 }
-      )
-    }
-
-    if (!xsrfToken) {
-      return NextResponse.json(
-        { success: false, error: 'Cookie文字列から XSRF-TOKEN が見つかりませんでした。Cookie行全体をコピーしてください（XSRF-TOKEN が含まれている必要があります）。' },
-        { status: 400 }
-      )
-    }
-
-    const headers = {
-      ...NOTE_HEADERS_BASE,
-      'Cookie': rawCookie,
-      'X-XSRF-TOKEN': xsrfToken,
-    }
+    const headers = buildHeaders(rawCookie, xsrfToken)
 
     // Step 1: 空の下書きを作成して note ID を取得
-    console.log('[post-to-note] 空の下書きを作成中...')
+    console.log('[post-to-note] 空の下書きを作成中... xsrf=', xsrfToken ? 'あり' : 'なし')
     const createRes = await fetch(`${NOTE_API}/v1/text_notes`, {
       method: 'POST',
       headers,
@@ -84,14 +74,28 @@ export async function POST(req: NextRequest) {
     const createRaw = await createRes.text()
     console.log('[post-to-note] 作成レスポンス:', createRes.status, createRaw.slice(0, 300))
 
+    if (createRes.status === 401 || createRes.status === 403) {
+      throw new Error(`認証エラー (${createRes.status}): セッションCookieの期限が切れている可能性があります。noteに再ログインして新しいCookieを取得してください。`)
+    }
+    if (createRes.status === 422) {
+      throw new Error(`CSRFエラー (422): note.comのAPIがXSRF-TOKENを要求しています。F12 → Application → Cookies → note.com の XSRF-TOKEN の値をメモし、Cookie文字列に追加してください（例: ...既存のCookie; XSRF-TOKEN=値）`)
+    }
     if (!createRes.ok) {
       throw new Error(`下書き作成失敗 (${createRes.status}): ${createRaw.slice(0, 200)}`)
     }
 
-    const createData = JSON.parse(createRaw)
-    const noteId: number | undefined = createData?.data?.id
-    const noteKey: string | undefined = createData?.data?.key
-    const urlname: string | undefined = createData?.data?.user?.urlname
+    let createData: Record<string, unknown>
+    try {
+      createData = JSON.parse(createRaw)
+    } catch {
+      throw new Error(`noteからの応答が不正なJSON形式です: ${createRaw.slice(0, 200)}`)
+    }
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const data = createData?.data as any
+    const noteId: number | undefined = data?.id
+    const noteKey: string | undefined = data?.key
+    const urlname: string | undefined = data?.user?.urlname
 
     if (!noteId) {
       throw new Error(`note IDを取得できませんでした: ${createRaw.slice(0, 200)}`)

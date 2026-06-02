@@ -275,12 +275,11 @@ export default function ArticleDetail({
               <p className={styles.cookieHint}>
                 取得方法：noteにログイン → F12 → Networkタブ → 任意のリクエストを選択 →
                 Request Headers の <code>Cookie:</code> 行の値を<strong>全体</strong>コピー
-                （<code>_note_session_v5</code> と <code>XSRF-TOKEN</code> の両方が含まれます）
               </p>
               <input
                 type="password"
                 className={styles.cookieInput}
-                placeholder="Cookie行全体を貼り付け（例: _note_session_v5=xxx; XSRF-TOKEN=yyy; ...）"
+                placeholder="Cookie行全体を貼り付け（_note_session_v5=xxx; ...）"
                 value={sessionCookie}
                 onChange={(e) => setSessionCookie(e.target.value)}
               />
