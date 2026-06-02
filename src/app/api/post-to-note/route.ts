@@ -12,36 +12,16 @@ const NOTE_HEADERS_BASE = {
   'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
 }
 
-async function fetchXsrfToken(sessionCookie: string): Promise<string> {
-  // note.com トップにアクセスして XSRF-TOKEN cookie を取得
-  const res = await fetch('https://note.com/', {
-    method: 'GET',
-    headers: {
-      'Cookie': `_note_session_v5=${sessionCookie}`,
-      'User-Agent': NOTE_HEADERS_BASE['User-Agent'],
-    },
-    redirect: 'follow',
-  })
-
-  // Set-Cookie ヘッダーから XSRF-TOKEN を探す
-  const raw = res.headers.get('set-cookie') ?? ''
-  const tokenMatch = raw.match(/XSRF-TOKEN=([^;,\s]+)/)
-  if (tokenMatch) return decodeURIComponent(tokenMatch[1])
-
-  // HTML内の csrf-token メタタグにフォールバック
-  const html = await res.text()
-  const metaMatch = html.match(/<meta[^>]+name=["']csrf-token["'][^>]+content=["']([^"']+)["']/)
-  if (metaMatch) return metaMatch[1]
-
-  throw new Error('XSRFトークンの取得に失敗しました。セッションCookieが正しいか、有効期限が切れていないか確認してください。')
-}
-
-function buildHeaders(sessionCookie: string, xsrfToken: string) {
-  return {
-    ...NOTE_HEADERS_BASE,
-    'Cookie': `_note_session_v5=${sessionCookie}`,
-    'X-XSRF-TOKEN': xsrfToken,
+function parseCookieString(raw: string): Record<string, string> {
+  const result: Record<string, string> = {}
+  for (const part of raw.split(';')) {
+    const idx = part.indexOf('=')
+    if (idx < 0) continue
+    const key = part.slice(0, idx).trim()
+    const val = part.slice(idx + 1).trim()
+    if (key) result[key] = val
   }
+  return result
 }
 
 export async function POST(req: NextRequest) {
@@ -55,14 +35,39 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    const cookie = (sessionCookie as string).trim()
+    const rawCookie = (sessionCookie as string).trim()
 
-    // Step 1: XSRF トークンを取得
-    console.log('[post-to-note] XSRFトークン取得中...')
-    const xsrfToken = await fetchXsrfToken(cookie)
-    const headers = buildHeaders(cookie, xsrfToken)
+    // Cookie文字列全体が貼り付けられた場合はパース、値だけの場合はそのまま使用
+    const isFullCookieString = rawCookie.includes('=') && rawCookie.includes(';')
+    const cookies = isFullCookieString ? parseCookieString(rawCookie) : {}
 
-    // Step 2: 空の下書きを作成して note ID を取得
+    const noteSession = isFullCookieString
+      ? cookies['_note_session_v5']
+      : rawCookie
+    const xsrfRaw = cookies['XSRF-TOKEN'] ?? cookies['xsrf-token'] ?? ''
+    const xsrfToken = xsrfRaw ? decodeURIComponent(xsrfRaw) : ''
+
+    if (!noteSession) {
+      return NextResponse.json(
+        { success: false, error: 'Cookie文字列から _note_session_v5 が見つかりませんでした。Cookie行全体をコピーしてください。' },
+        { status: 400 }
+      )
+    }
+
+    if (!xsrfToken) {
+      return NextResponse.json(
+        { success: false, error: 'Cookie文字列から XSRF-TOKEN が見つかりませんでした。Cookie行全体をコピーしてください（XSRF-TOKEN が含まれている必要があります）。' },
+        { status: 400 }
+      )
+    }
+
+    const headers = {
+      ...NOTE_HEADERS_BASE,
+      'Cookie': rawCookie,
+      'X-XSRF-TOKEN': xsrfToken,
+    }
+
+    // Step 1: 空の下書きを作成して note ID を取得
     console.log('[post-to-note] 空の下書きを作成中...')
     const createRes = await fetch(`${NOTE_API}/v1/text_notes`, {
       method: 'POST',
@@ -92,7 +97,7 @@ export async function POST(req: NextRequest) {
       throw new Error(`note IDを取得できませんでした: ${createRaw.slice(0, 200)}`)
     }
 
-    // Step 3: 下書きにタイトル・本文を保存
+    // Step 2: 下書きにタイトル・本文を保存
     console.log('[post-to-note] 本文を下書き保存中... id=', noteId)
     const saveRes = await fetch(
       `${NOTE_API}/v1/text_notes/draft_save?id=${noteId}&is_temp_saved=true`,
@@ -116,12 +121,11 @@ export async function POST(req: NextRequest) {
       throw new Error(`下書き保存失敗 (${saveRes.status}): ${saveRaw.slice(0, 200)}`)
     }
 
-    // 下書きURLを構築
     const noteUrl = urlname
       ? `https://note.com/@${urlname}/n/${noteKey}`
       : noteKey
       ? `https://note.com/notes/${noteKey}`
-      : `https://note.com/`
+      : 'https://note.com/'
 
     console.log('[post-to-note] 完了:', noteUrl)
 

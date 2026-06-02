@@ -270,16 +270,17 @@ export default function ArticleDetail({
           {showCookieInput && postState !== "done" && (
             <div className={styles.cookieSection}>
               <p className={styles.cookieLabel}>
-                🔑 noteのセッションCookieを入力してください
+                🔑 noteのCookie文字列を貼り付けてください
               </p>
               <p className={styles.cookieHint}>
                 取得方法：noteにログイン → F12 → Networkタブ → 任意のリクエストを選択 →
-                Request Headers の Cookie から <code>_note_session_v5=</code> の値をコピー
+                Request Headers の <code>Cookie:</code> 行の値を<strong>全体</strong>コピー
+                （<code>_note_session_v5</code> と <code>XSRF-TOKEN</code> の両方が含まれます）
               </p>
               <input
                 type="password"
                 className={styles.cookieInput}
-                placeholder="_note_session_v5 の値を貼り付け"
+                placeholder="Cookie行全体を貼り付け（例: _note_session_v5=xxx; XSRF-TOKEN=yyy; ...）"
                 value={sessionCookie}
                 onChange={(e) => setSessionCookie(e.target.value)}
               />
