@@ -3,6 +3,10 @@
     {
       "path": "/api/cron?channelId=my-channel",
       "schedule": "0 1 * * *"
+    },
+    {
+      "path": "/api/cron/scheduler",
+      "schedule": "0 3 * * *"
     }
   ]
 }
