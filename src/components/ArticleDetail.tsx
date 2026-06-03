@@ -1,9 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Article } from "@/lib/notion";
 import styles from "./ArticleDetail.module.css";
 import XPostsPanel from "./XPostsPanel";
+
+const LS_COOKIE_KEY = "note_session_cookie";
 
 interface ArticleDetailProps {
   article: Article;
@@ -46,7 +48,31 @@ export default function ArticleDetail({
   const [selectedTitleIdx, setSelectedTitleIdx] = useState(0);
   const [showCookieInput, setShowCookieInput]   = useState(false);
   const [sessionCookie, setSessionCookie]       = useState("");
+  const [hasSavedCookie, setHasSavedCookie]     = useState(false);
   const [statusState, setStatusState] = useState<"idle" | "updating" | "done">("idle");
+
+  // localStorage から保存済みCookieを読み込む
+  useEffect(() => {
+    const saved = localStorage.getItem(LS_COOKIE_KEY);
+    if (saved) {
+      setSessionCookie(saved);
+      setHasSavedCookie(true);
+    }
+  }, []);
+
+  const saveCookie = (value: string) => {
+    localStorage.setItem(LS_COOKIE_KEY, value);
+    setHasSavedCookie(true);
+  };
+
+  const clearCookie = () => {
+    localStorage.removeItem(LS_COOKIE_KEY);
+    setSessionCookie("");
+    setHasSavedCookie(false);
+    setShowCookieInput(true);
+    setPostState("idle");
+    setPostError("");
+  };
 
   // タイトル案をパース
   const titles = article.titleCandidates
@@ -87,14 +113,9 @@ export default function ArticleDetail({
   const handlePostToNote = async () => {
     if (!article.body) return;
 
-    // Cookieが未入力の場合は入力欄を表示
-    if (!sessionCookie && !showCookieInput) {
-      setShowCookieInput(true);
-      return;
-    }
-
+    // 保存済みCookieも入力中Cookieもない → 入力欄を表示
     if (!sessionCookie) {
-      setPostError("セッションCookieを入力してください");
+      setShowCookieInput(true);
       return;
     }
 
@@ -115,11 +136,21 @@ export default function ArticleDetail({
       const data = await res.json();
 
       if (data.success) {
+        // 成功したらCookieを保存
+        saveCookie(sessionCookie.trim());
         setPostState("done");
         setNoteUrl(data.data.noteUrl);
         setShowCookieInput(false);
       } else {
-        throw new Error(data.error);
+        // 認証エラーのときだけCookieをリセットして再入力を促す
+        const isAuthError = data.error?.includes("認証エラー") || data.error?.includes("401") || data.error?.includes("403");
+        if (isAuthError) {
+          clearCookie();
+          setPostError("セッションが切れました。Cookieを再入力してください。");
+        } else {
+          setPostState("error");
+          setPostError(data.error ?? "投稿に失敗しました");
+        }
       }
     } catch (error) {
       setPostState("error");
@@ -266,7 +297,7 @@ export default function ArticleDetail({
             </span>
           </div>
 
-          {/* Cookie入力欄 */}
+          {/* Cookie入力欄（未保存 or 認証エラー時のみ表示） */}
           {showCookieInput && postState !== "done" && (
             <div className={styles.cookieSection}>
               <p className={styles.cookieLabel}>
@@ -275,6 +306,7 @@ export default function ArticleDetail({
               <p className={styles.cookieHint}>
                 取得方法：noteにログイン → F12 → Networkタブ → 任意のリクエストを選択 →
                 Request Headers の <code>Cookie:</code> 行の値を<strong>全体</strong>コピー
+                （初回のみ。次回以降は自動で使い回します）
               </p>
               <input
                 type="password"
@@ -284,6 +316,16 @@ export default function ArticleDetail({
                 onChange={(e) => setSessionCookie(e.target.value)}
               />
             </div>
+          )}
+
+          {/* 保存済みCookie使用中の表示 */}
+          {hasSavedCookie && !showCookieInput && postState !== "done" && (
+            <p className={styles.cookieSaved}>
+              🔒 保存済みCookieを使用します
+              <button className={styles.cookieResetBtn} onClick={clearCookie}>
+                リセット
+              </button>
+            </p>
           )}
 
           {/* エラー表示 */}
@@ -312,8 +354,6 @@ export default function ArticleDetail({
             >
               {postState === "posting" ? (
                 <><span className={styles.spinner} /> 投稿中...</>
-              ) : showCookieInput ? (
-                <>📤 この内容でnoteに下書き投稿する</>
               ) : (
                 <>📤 noteに下書き投稿する</>
               )}
