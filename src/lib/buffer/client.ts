@@ -1,4 +1,4 @@
-const BUFFER_API = 'https://api.buffer.com/graphql'
+const BUFFER_API = 'https://api.buffer.com'
 
 function getApiKey(): string {
   const key = process.env.BUFFER_API_KEY
@@ -29,8 +29,24 @@ async function bufferQuery(apiKey: string, query: string) {
     },
     body: JSON.stringify({ query }),
   })
-  if (!res.ok) throw new Error(`Buffer API エラー: ${res.status}`)
+  if (!res.ok) {
+    const body = await res.text().catch(() => '')
+    throw new Error(`Buffer API エラー: ${res.status} ${body}`)
+  }
   return res.json()
+}
+
+let cachedOrgId: string | null = null
+
+async function getOrganizationId(apiKey: string): Promise<string> {
+  if (cachedOrgId) return cachedOrgId
+  const data = await bufferQuery(apiKey, `
+    query { account { organizations { id } } }
+  `)
+  const orgs: Array<{ id: string }> = data?.data?.account?.organizations ?? []
+  if (!orgs[0]?.id) throw new Error('Buffer: organization ID が取得できませんでした')
+  cachedOrgId = orgs[0].id
+  return cachedOrgId
 }
 
 export async function getBufferQueueCount(
@@ -41,10 +57,14 @@ export async function getBufferQueueCount(
   }
   try {
     const apiKey = getApiKey()
+    const orgId = await getOrganizationId(apiKey)
     const channelId = getChannelId(platform)
     const data = await bufferQuery(apiKey, `
       query {
-        posts(input: { channelIds: [${JSON.stringify(channelId)}], status: pending, limit: 100 }) {
+        posts(input: {
+          organizationId: ${JSON.stringify(orgId)},
+          filter: { channelIds: [${JSON.stringify(channelId)}], status: [scheduled] }
+        }, first: 100) {
           edges { node { id } }
         }
       }

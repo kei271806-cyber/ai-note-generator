@@ -113,11 +113,15 @@ export default function ArticleDetail({
   const handlePostToNote = async () => {
     if (!article.body) return;
 
-    // 保存済みCookieも入力中Cookieもない → 入力欄を表示
+    // Cookieがない → 入力欄を表示
     if (!sessionCookie) {
       setShowCookieInput(true);
       return;
     }
+
+    // APIコール前にCookieを保存（成功を待たずに保持）
+    saveCookie(sessionCookie.trim());
+    setShowCookieInput(false);
 
     setPostState("posting");
     setPostError("");
@@ -136,16 +140,14 @@ export default function ArticleDetail({
       const data = await res.json();
 
       if (data.success) {
-        // 成功したらCookieを保存
-        saveCookie(sessionCookie.trim());
         setPostState("done");
         setNoteUrl(data.data.noteUrl);
-        setShowCookieInput(false);
       } else {
-        // 認証エラーのときだけCookieをリセットして再入力を促す
+        // 認証エラー時は入力欄を再表示（localStorageの値は保持）
         const isAuthError = data.error?.includes("認証エラー") || data.error?.includes("401") || data.error?.includes("403");
         if (isAuthError) {
-          clearCookie();
+          setShowCookieInput(true);
+          setPostState("idle");
           setPostError("セッションが切れました。Cookieを再入力してください。");
         } else {
           setPostState("error");
