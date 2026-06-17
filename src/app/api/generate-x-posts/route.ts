@@ -64,7 +64,7 @@ ${article.slice(0, 3000)}`;
     console.log("[generate-threads-post] Threads投稿生成中...");
 
     const response = await anthropic.messages.create({
-      model: "claude-sonnet-4-5",
+      model: "claude-sonnet-4-6",
       max_tokens: 1000,
       messages: [{ role: "user", content: prompt }],
     });

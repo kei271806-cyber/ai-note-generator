@@ -28,7 +28,7 @@ export async function generateArticle(
 
   // ── Step 1: タイトル案を生成（システムプロンプトをキャッシュ）──
   const titlesResponse = await anthropic.messages.create({
-    model: "claude-sonnet-4-5",
+    model: "claude-sonnet-4-6",
     max_tokens: 500,
     system: [
       {
@@ -81,7 +81,7 @@ export async function generateArticle(
 
   // ── Step 2: 記事本文を生成（システムプロンプトをキャッシュ）──
   const articleResponse = await anthropic.messages.create({
-    model: "claude-sonnet-4-5",
+    model: "claude-sonnet-4-6",
     max_tokens: 8192,
     system: [
       {
