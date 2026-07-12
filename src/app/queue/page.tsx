@@ -25,11 +25,16 @@ export default function QueuePage() {
   const [refilling, setRefilling]   = useState(false)
   const [refillLog, setRefillLog]   = useState<string[] | null>(null)
 
-  const fetchPosts = async (f: PostStatus | 'all') => {
+  const MANUAL_SOURCE_TYPES = 'memo,dev_log,insight,failure'
+
+  const fetchPosts = async (f: PostStatus | 'all', manual = memoOnly) => {
     setLoading(true)
     setFetchError(null)
     try {
-      const url = f === 'all' ? '/api/posts' : `/api/posts?status=${f}`
+      const params = new URLSearchParams()
+      if (f !== 'all') params.set('status', f)
+      if (manual) params.set('source_types', MANUAL_SOURCE_TYPES)
+      const url = `/api/posts${params.toString() ? '?' + params.toString() : ''}`
       const res = await fetch(url)
       const data = await res.json()
       if (!res.ok) {
@@ -67,10 +72,11 @@ export default function QueuePage() {
   }
 
   useEffect(() => {
-    fetchPosts(filter)
+    fetchPosts(filter, memoOnly)
     fetchBufferCount()
     fetchStockSummary()
-  }, [filter])
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filter, memoOnly])
 
   const handleRefill = async () => {
     setRefilling(true)
@@ -211,11 +217,11 @@ export default function QueuePage() {
       {/* 投稿一覧 */}
       {loading ? (
         <p style={{ color: '#6b7280' }}>読み込み中...</p>
-      ) : !fetchError && posts.filter((p) => !memoOnly || ['memo', 'dev_log', 'insight', 'failure'].includes(p.source_type)).length === 0 ? (
+      ) : !fetchError && posts.length === 0 ? (
         <p style={{ color: '#6b7280' }}>投稿がありません</p>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-          {posts.filter((p) => !memoOnly || ['memo', 'dev_log', 'insight', 'failure'].includes(p.source_type)).map((post) => (
+          {posts.map((post) => (
             <div
               key={post.notion_page_id}
               style={{ border: '1px solid #e5e7eb', borderRadius: 8, padding: '1rem', background: '#fff' }}

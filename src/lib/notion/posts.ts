@@ -51,15 +51,30 @@ function notionPageToPost(page: any): XPost {
 
 export async function getPosts({
   status,
+  sourceTypes,
   limit = 200,
 }: {
   status?: PostStatus
+  sourceTypes?: SourceType[]
   limit?: number
 } = {}): Promise<XPost[]> {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const filter: any = status
-    ? { property: 'status', select: { equals: status } }
-    : undefined
+  const conditions: any[] = []
+
+  if (status) {
+    conditions.push({ property: 'status', select: { equals: status } })
+  }
+  if (sourceTypes && sourceTypes.length > 0) {
+    conditions.push({
+      or: sourceTypes.map((t) => ({ property: 'source_type', select: { equals: t } })),
+    })
+  }
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const filter: any =
+    conditions.length === 0 ? undefined :
+    conditions.length === 1 ? conditions[0] :
+    { and: conditions }
 
   const response = await notion.databases.query({
     database_id: getDbId(),

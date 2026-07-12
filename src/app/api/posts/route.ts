@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getPosts, createPost, generateId } from '@/lib/notion/posts'
-import type { PostStatus } from '@/types'
+import type { PostStatus, SourceType } from '@/types'
 
 export const dynamic = 'force-dynamic'
 
@@ -9,8 +9,12 @@ export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url)
     const status = searchParams.get('status') as PostStatus | null
     const limit = parseInt(searchParams.get('limit') ?? '200')
+    const sourceTypesParam = searchParams.get('source_types')
+    const sourceTypes = sourceTypesParam
+      ? (sourceTypesParam.split(',') as SourceType[])
+      : undefined
 
-    const posts = await getPosts({ status: status ?? undefined, limit })
+    const posts = await getPosts({ status: status ?? undefined, sourceTypes, limit })
     return NextResponse.json(posts)
   } catch (error) {
     console.error('[GET /api/posts]', error)
