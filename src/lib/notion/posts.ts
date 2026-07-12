@@ -51,7 +51,7 @@ function notionPageToPost(page: any): XPost {
 
 export async function getPosts({
   status,
-  limit = 50,
+  limit = 200,
 }: {
   status?: PostStatus
   limit?: number
@@ -64,7 +64,10 @@ export async function getPosts({
   const response = await notion.databases.query({
     database_id: getDbId(),
     filter,
-    sorts: [{ property: 'priority', direction: 'descending' }],
+    sorts: [
+      { property: 'priority', direction: 'descending' },
+      { timestamp: 'created_time', direction: 'descending' },
+    ],
     page_size: limit,
   })
 
@@ -109,6 +112,27 @@ export async function getApprovedPosts(
   return [...prioritized, ...rest].slice(0, limit)
 }
 
+const MAX_DRAFT_POSTS = 200
+
+export async function cleanupOldDrafts(max: number = MAX_DRAFT_POSTS): Promise<number> {
+  const response = await notion.databases.query({
+    database_id: getDbId(),
+    filter: { property: 'status', select: { equals: 'draft' } },
+    sorts: [{ timestamp: 'created_time', direction: 'ascending' }],
+    page_size: max + 50,
+  })
+
+  const excess = response.results.length - max
+  if (excess <= 0) return 0
+
+  const toArchive = response.results.slice(0, excess) as Array<{ id: string }>
+  await Promise.all(
+    toArchive.map((page) => notion.pages.update({ page_id: page.id, archived: true }))
+  )
+  console.log(`[cleanupOldDrafts] ${excess}件の古いdraft投稿を削除しました`)
+  return excess
+}
+
 export async function createPost(
   data: Omit<XPost, 'notion_page_id' | 'created_at'>
 ): Promise<XPost> {
@@ -127,6 +151,10 @@ export async function createPost(
       ...(data.platform ? { platform: { select: { name: data.platform } } } : {}),
     },
   })
+
+  // draft 上限超過時に古い投稿を削除（fire-and-forget）
+  cleanupOldDrafts().catch((e) => console.error('[cleanupOldDrafts]', e))
+
   return notionPageToPost(page)
 }
 

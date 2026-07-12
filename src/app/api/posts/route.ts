@@ -8,7 +8,7 @@ export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url)
     const status = searchParams.get('status') as PostStatus | null
-    const limit = parseInt(searchParams.get('limit') ?? '50')
+    const limit = parseInt(searchParams.get('limit') ?? '200')
 
     const posts = await getPosts({ status: status ?? undefined, limit })
     return NextResponse.json(posts)

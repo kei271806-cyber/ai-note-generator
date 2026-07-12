@@ -17,19 +17,30 @@ const STATUS_LABELS: PostStatus[] = ['draft', 'approved', 'queued', 'buffered', 
 export default function QueuePage() {
   const [posts, setPosts]           = useState<XPost[]>([])
   const [filter, setFilter]         = useState<PostStatus | 'all'>('all')
+  const [memoOnly, setMemoOnly]     = useState(false)
   const [bufferCount, setBufferCount] = useState<number | null>(null)
   const [stockSummary, setStockSummary] = useState<{ threads: number; x: number } | null>(null)
   const [loading, setLoading]       = useState(true)
+  const [fetchError, setFetchError] = useState<string | null>(null)
   const [refilling, setRefilling]   = useState(false)
   const [refillLog, setRefillLog]   = useState<string[] | null>(null)
 
   const fetchPosts = async (f: PostStatus | 'all') => {
     setLoading(true)
+    setFetchError(null)
     try {
       const url = f === 'all' ? '/api/posts' : `/api/posts?status=${f}`
       const res = await fetch(url)
       const data = await res.json()
+      if (!res.ok) {
+        setFetchError(data.error ?? `APIエラー (HTTP ${res.status})`)
+        setPosts([])
+        return
+      }
       setPosts(Array.isArray(data) ? data : [])
+    } catch (e) {
+      setFetchError(e instanceof Error ? e.message : '通信エラー')
+      setPosts([])
     } finally {
       setLoading(false)
     }
@@ -145,8 +156,8 @@ export default function QueuePage() {
         </div>
       )}
 
-      {/* フィルター */}
-      <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginBottom: '1.5rem' }}>
+      {/* ステータスフィルター */}
+      <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginBottom: '0.5rem' }}>
         {(['all', ...STATUS_LABELS] as const).map((s) => (
           <button
             key={s}
@@ -166,14 +177,45 @@ export default function QueuePage() {
         ))}
       </div>
 
+      {/* memo フィルター */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1.5rem' }}>
+        <button
+          onClick={() => setMemoOnly((v) => !v)}
+          style={{
+            padding: '0.2rem 0.75rem',
+            borderRadius: 9999,
+            border: `1px solid ${memoOnly ? '#7c3aed' : '#d1d5db'}`,
+            cursor: 'pointer',
+            fontSize: '0.8rem',
+            background: memoOnly ? '#ede9fe' : '#fff',
+            color: memoOnly ? '#7c3aed' : '#6b7280',
+            fontWeight: memoOnly ? 700 : 400,
+          }}
+        >
+          ✏ memo のみ
+        </button>
+        {memoOnly && (
+          <span style={{ fontSize: '0.75rem', color: '#7c3aed' }}>
+            memo 投稿だけ表示中
+          </span>
+        )}
+      </div>
+
+      {/* エラー表示 */}
+      {fetchError && (
+        <div style={{ marginBottom: '1rem', padding: '0.75rem 1rem', background: '#fee2e2', border: '1px solid #fca5a5', borderRadius: 8, fontSize: '0.875rem', color: '#991b1b' }}>
+          ⚠ 投稿の取得に失敗しました：{fetchError}
+        </div>
+      )}
+
       {/* 投稿一覧 */}
       {loading ? (
         <p style={{ color: '#6b7280' }}>読み込み中...</p>
-      ) : posts.length === 0 ? (
+      ) : !fetchError && posts.filter((p) => !memoOnly || p.source_type === 'memo').length === 0 ? (
         <p style={{ color: '#6b7280' }}>投稿がありません</p>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-          {posts.map((post) => (
+          {posts.filter((p) => !memoOnly || p.source_type === 'memo').map((post) => (
             <div
               key={post.notion_page_id}
               style={{ border: '1px solid #e5e7eb', borderRadius: 8, padding: '1rem', background: '#fff' }}
@@ -216,6 +258,21 @@ export default function QueuePage() {
                   >
                     下書きに戻す
                   </button>
+                )}
+                {post.status === 'failed' && (
+                  <>
+                    <button
+                      onClick={() => handleStatusChange(post, 'draft')}
+                      style={{ padding: '0.25rem 0.75rem', background: '#fef9c3', color: '#92400e', border: 'none', borderRadius: 4, cursor: 'pointer', fontSize: '0.8rem' }}
+                    >
+                      ↩ 下書きに戻す
+                    </button>
+                    {post.error_message && (
+                      <span style={{ fontSize: '0.75rem', color: '#991b1b', alignSelf: 'center' }}>
+                        エラー: {post.error_message}
+                      </span>
+                    )}
+                  </>
                 )}
               </div>
             </div>
