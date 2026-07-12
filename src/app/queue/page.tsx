@@ -10,9 +10,10 @@ const STATUS_COLORS: Record<PostStatus, string> = {
   buffered:  'background:#ede9fe;color:#5b21b6',
   posted:    'background:#d1fae5;color:#065f46',
   failed:    'background:#fee2e2;color:#991b1b',
+  rejected:  'background:#f3f4f6;color:#9ca3af',
 }
 
-const STATUS_LABELS: PostStatus[] = ['draft', 'approved', 'queued', 'buffered', 'posted', 'failed']
+const STATUS_LABELS: PostStatus[] = ['draft', 'approved', 'queued', 'buffered', 'posted', 'failed', 'rejected']
 
 export default function QueuePage() {
   const [posts, setPosts]           = useState<XPost[]>([])
@@ -250,11 +251,27 @@ export default function QueuePage() {
 
               <div style={{ display: 'flex', gap: '0.5rem' }}>
                 {post.status === 'draft' && (
+                  <>
+                    <button
+                      onClick={() => handleStatusChange(post, 'approved')}
+                      style={{ padding: '0.25rem 0.75rem', background: '#dbeafe', color: '#1d4ed8', border: 'none', borderRadius: 4, cursor: 'pointer', fontSize: '0.8rem' }}
+                    >
+                      ✓ 承認
+                    </button>
+                    <button
+                      onClick={() => handleStatusChange(post, 'rejected')}
+                      style={{ padding: '0.25rem 0.75rem', background: '#f3f4f6', color: '#6b7280', border: 'none', borderRadius: 4, cursor: 'pointer', fontSize: '0.8rem' }}
+                    >
+                      ✗ 否認
+                    </button>
+                  </>
+                )}
+                {post.status === 'rejected' && (
                   <button
-                    onClick={() => handleStatusChange(post, 'approved')}
-                    style={{ padding: '0.25rem 0.75rem', background: '#dbeafe', color: '#1d4ed8', border: 'none', borderRadius: 4, cursor: 'pointer', fontSize: '0.8rem' }}
+                    onClick={() => handleStatusChange(post, 'draft')}
+                    style={{ padding: '0.25rem 0.75rem', background: '#e5e7eb', color: '#374151', border: 'none', borderRadius: 4, cursor: 'pointer', fontSize: '0.8rem' }}
                   >
-                    ✓ 承認
+                    ↩ 下書きに戻す
                   </button>
                 )}
                 {post.status === 'approved' && (

@@ -22,6 +22,7 @@ export type PostStatus =
   | 'buffered'
   | 'posted'
   | 'failed'
+  | 'rejected'
 
 export type Platform = 'threads' | 'x'
 
