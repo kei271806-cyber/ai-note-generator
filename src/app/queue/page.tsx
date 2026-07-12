@@ -192,11 +192,11 @@ export default function QueuePage() {
             fontWeight: memoOnly ? 700 : 400,
           }}
         >
-          ✏ memo のみ
+          ✏ 手動投稿のみ
         </button>
         {memoOnly && (
           <span style={{ fontSize: '0.75rem', color: '#7c3aed' }}>
-            memo 投稿だけ表示中
+            手動投稿（memo・実践ログ・失敗談・insight）だけ表示中
           </span>
         )}
       </div>
@@ -211,11 +211,11 @@ export default function QueuePage() {
       {/* 投稿一覧 */}
       {loading ? (
         <p style={{ color: '#6b7280' }}>読み込み中...</p>
-      ) : !fetchError && posts.filter((p) => !memoOnly || p.source_type === 'memo').length === 0 ? (
+      ) : !fetchError && posts.filter((p) => !memoOnly || ['memo', 'dev_log', 'insight', 'failure'].includes(p.source_type)).length === 0 ? (
         <p style={{ color: '#6b7280' }}>投稿がありません</p>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-          {posts.filter((p) => !memoOnly || p.source_type === 'memo').map((post) => (
+          {posts.filter((p) => !memoOnly || ['memo', 'dev_log', 'insight', 'failure'].includes(p.source_type)).map((post) => (
             <div
               key={post.notion_page_id}
               style={{ border: '1px solid #e5e7eb', borderRadius: 8, padding: '1rem', background: '#fff' }}
