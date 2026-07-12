@@ -167,9 +167,6 @@ export async function createPost(
     },
   })
 
-  // draft 上限超過時に古い投稿を削除（fire-and-forget）
-  cleanupOldDrafts().catch((e) => console.error('[cleanupOldDrafts]', e))
-
   return notionPageToPost(page)
 }
 
