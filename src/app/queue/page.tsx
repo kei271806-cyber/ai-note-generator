@@ -25,6 +25,7 @@ export default function QueuePage() {
   const [fetchError, setFetchError] = useState<string | null>(null)
   const [refilling, setRefilling]   = useState(false)
   const [refillLog, setRefillLog]   = useState<string[] | null>(null)
+  const [aiNewsStats, setAiNewsStats] = useState<{ approved: number; rejected: number; ready: boolean; approvedReady: boolean; rejectedReady: boolean } | null>(null)
 
   const MANUAL_SOURCE_TYPES = 'memo,dev_log,insight,failure'
 
@@ -72,10 +73,21 @@ export default function QueuePage() {
     }
   }
 
+  const fetchAiNewsStats = async () => {
+    try {
+      const res = await fetch('/api/posts/ai-news-stats')
+      const data = await res.json()
+      setAiNewsStats(data)
+    } catch {
+      setAiNewsStats(null)
+    }
+  }
+
   useEffect(() => {
     fetchPosts(filter, memoOnly)
     fetchBufferCount()
     fetchStockSummary()
+    fetchAiNewsStats()
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filter, memoOnly])
 
@@ -160,6 +172,35 @@ export default function QueuePage() {
               {line}
             </div>
           ))}
+        </div>
+      )}
+
+      {/* AIニュース分析準備状況 */}
+      {aiNewsStats && (
+        <div style={{
+          marginBottom: '1rem',
+          padding: '0.75rem 1rem',
+          background: aiNewsStats.ready ? '#fef9c3' : '#f9fafb',
+          border: `1px solid ${aiNewsStats.ready ? '#fde68a' : '#e5e7eb'}`,
+          borderRadius: 8,
+          fontSize: '0.8rem',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '1rem',
+          flexWrap: 'wrap',
+        }}>
+          <span style={{ color: '#374151', fontWeight: 600 }}>📊 AIニュース分析データ</span>
+          <span style={{ color: aiNewsStats.approvedReady ? '#065f46' : '#6b7280' }}>
+            承認 {aiNewsStats.approved}件{aiNewsStats.approvedReady ? ' ✓' : ' / 100件待ち'}
+          </span>
+          <span style={{ color: aiNewsStats.rejectedReady ? '#991b1b' : '#6b7280' }}>
+            否認 {aiNewsStats.rejected}件{aiNewsStats.rejectedReady ? ' ✓' : ' / 100件待ち'}
+          </span>
+          {aiNewsStats.ready && (
+            <span style={{ color: '#92400e', fontWeight: 700 }}>
+              🎉 分析可能になりました！プロンプト改善のタイミングです
+            </span>
+          )}
         </div>
       )}
 
