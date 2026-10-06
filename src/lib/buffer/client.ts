@@ -3,7 +3,7 @@ const BUFFER_API = 'https://api.buffer.com'
 function getApiKey(): string {
   const key = process.env.BUFFER_API_KEY
   if (!key) throw new Error('BUFFER_API_KEY が未設定です')
-  return key
+  return key.replace(/^﻿/, '').trim()
 }
 
 export function getChannelId(platform: 'threads' | 'x' = 'threads'): string {
@@ -77,12 +77,22 @@ export async function getBufferQueueCount(
   }
 }
 
+const THREADS_MAX_CHARS = 500
+
+function truncateForThreads(text: string): string {
+  if (text.length <= THREADS_MAX_CHARS) return text
+  const truncated = text.slice(0, THREADS_MAX_CHARS - 3)
+  const lastBreak = Math.max(truncated.lastIndexOf('\n'), truncated.lastIndexOf('。'), truncated.lastIndexOf('、'))
+  return (lastBreak > THREADS_MAX_CHARS * 0.7 ? truncated.slice(0, lastBreak + 1) : truncated) + '...'
+}
+
 export async function addToBuffer(
   content: string,
   platform: 'threads' | 'x' = 'threads'
 ): Promise<{ id: string }> {
   const apiKey = getApiKey()
   const channelId = getChannelId(platform)
+  if (platform === 'threads') content = truncateForThreads(content)
   const data = await bufferQuery(apiKey, `
     mutation {
       createPost(input: {
