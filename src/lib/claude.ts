@@ -1,14 +1,3 @@
-/**
- * lib/claude.ts
- * Anthropic Claude API を使って記事を生成するモジュール
- * プロンプトキャッシング（RTK）でトークンコストを最大90%削減
- *
- * キャッシュの仕組み：
- * - 毎回変わらないシステムプロンプトをキャッシュ
- * - 変わる部分（テーマ）だけ毎回送信
- * - 同じキャッシュを5分間再利用（Vercel Cronで複数記事を連続生成する際に効果大）
- */
-
 import Anthropic from "@anthropic-ai/sdk";
 
 const anthropic = new Anthropic({
@@ -26,9 +15,8 @@ export async function generateArticle(
   articleSystemPrompt: string,
 ): Promise<GeneratedArticle> {
 
-  // ── Step 1: タイトル案を生成（システムプロンプトをキャッシュ）──
   const titlesResponse = await anthropic.messages.create({
-    model: "claude-sonnet-4-6",
+    model: "claude-opus-4-8",
     max_tokens: 500,
     system: [
       {
@@ -45,7 +33,6 @@ export async function generateArticle(
     ],
   });
 
-  // キャッシュ効果をログ出力
   const titleUsage = titlesResponse.usage as Anthropic.Usage & {
     cache_creation_input_tokens?: number;
     cache_read_input_tokens?: number;
@@ -61,14 +48,12 @@ export async function generateArticle(
     .join("")
     .trim();
 
-  // タイトルをパース
   const titles = titlesText
     .split("\n")
     .map((line) => line.replace(/^\d+\.\s*/, "").trim())
     .filter((line) => line.length > 0)
     .slice(0, 3);
 
-  // タイトルが取れなかった場合のフォールバック
   if (titles.length === 0) {
     titles.push(
       `${theme}の完全ガイド（初心者向け）`,
@@ -79,9 +64,8 @@ export async function generateArticle(
 
   console.log("[Claude] タイトル生成完了:", titles[0]);
 
-  // ── Step 2: 記事本文を生成（システムプロンプトをキャッシュ）──
   const articleResponse = await anthropic.messages.create({
-    model: "claude-sonnet-4-6",
+    model: "claude-opus-4-8",
     max_tokens: 8192,
     system: [
       {
@@ -98,7 +82,6 @@ export async function generateArticle(
     ],
   });
 
-  // キャッシュ効果をログ出力
   const articleUsage = articleResponse.usage as Anthropic.Usage & {
     cache_creation_input_tokens?: number;
     cache_read_input_tokens?: number;
